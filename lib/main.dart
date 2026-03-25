@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'dart:async';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -118,36 +119,170 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
   }
 }
 
-// --- PAGE 1: HERO SECTION ---
-class HeroSection extends StatelessWidget {
+// --- PAGE 1: HOMEPAGE ---
+class HeroSection extends StatefulWidget {
   const HeroSection({super.key});
+
+  @override
+  State<HeroSection> createState() => _HeroSectionState();
+}
+
+class _HeroSectionState extends State<HeroSection> {
+  final PageController _pageController = PageController();
+  int _currentIndex = 0;
+  late Timer _timer;
+
+  final List<String> _sliderImages = [
+    "https://ovapdygzriiojovtnngq.supabase.co/storage/v1/object/public/Images/image_2026-03-25_165947046.png",
+    "https://ovapdygzriiojovtnngq.supabase.co/storage/v1/object/public/Images/image_2026-03-25_170454523.png",
+    "https://ovapdygzriiojovtnngq.supabase.co/storage/v1/object/public/Images/image_2026-03-25_170502694.png",
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 5), (Timer timer) {
+      if (_currentIndex < _sliderImages.length - 1) {
+        _currentIndex++;
+      } else {
+        _currentIndex = 0;
+      }
+      if (_pageController.hasClients) {
+        _pageController.animateToPage(_currentIndex,
+            duration: const Duration(milliseconds: 800), curve: Curves.fastOutSlowIn);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  // --- THE UI BUILDER ---
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      height: 600,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0xFF4A0000), Color(0xFF1A0000)],
+    return Column(
+      children: [
+        SizedBox(
+          height: 600,
+          width: MediaQuery.of(context).size.width,
+          child: Stack(
+            children: [
+              PageView.builder(
+                controller: _pageController,
+                itemCount: _sliderImages.length,
+                onPageChanged: (index) => setState(() => _currentIndex = index),
+                itemBuilder: (context, index) => _buildSlide(_sliderImages[index], "EXCLUSIVE COLLECTION"),
+              ),
+              _sliderArrow(Icons.arrow_back_ios, () => _pageController.previousPage(duration: const Duration(milliseconds: 400), curve: Curves.easeInOut), left: 20),
+              _sliderArrow(Icons.arrow_forward_ios, () => _pageController.nextPage(duration: const Duration(milliseconds: 400), curve: Curves.easeInOut), right: 20),
+            ],
+          ),
         ),
+        
+        const SizedBox(height: 40),
+        const GoldPriceCard(price: 385.50),
+
+        // OUR STORY BOX
+        _buildStoryBox(context),
+
+        const Text("OUR BOUTIQUES", style: TextStyle(color: Color(0xFFD4AF37), fontSize: 22, letterSpacing: 3)),
+        const SizedBox(height: 30),
+        
+        // BRANCH LIST (Where your error was)
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Column(
+            children: [
+              _buildBranchCard("Batu Pahat", "No. 12, Jalan Sultanah, 83000 Batu Pahat, Johor", "https://maps.google.com/?q=Batu+Pahat"),
+              _buildBranchCard("Port Klang", "45, Jalan Pelabuhan, 42000 Port Klang, Selangor", "https://maps.google.com/?q=Port+Klang"),
+              _buildBranchCard("Kuala Lumpur", "L1-02, Bukit Bintang City Centre, 55100 Kuala Lumpur", "https://maps.google.com/?q=Kuala+Lumpur"),
+            ],
+          ),
+        ),
+        const SizedBox(height: 60),
+      ],
+    );
+  }
+
+  // --- HELPER METHODS (Must stay inside this class!) ---
+
+  Widget _buildBranchCard(String name, String address, String mapUrl) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF2A0000),
+        border: Border.all(color: const Color(0xFFD4AF37).withOpacity(0.5)),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Text("ESTABLISHED 2026", style: TextStyle(color: Color(0xFFD4AF37), letterSpacing: 5)),
-          const SizedBox(height: 20),
-          const Text("EXQUISITE GOLD\nFOR THE ELITE", 
-            textAlign: TextAlign.center, 
-            style: TextStyle(color: Colors.white, fontSize: 45, fontWeight: FontWeight.w900, height: 1.1)),
-          const SizedBox(height: 40),
-          const GoldPriceCard(price: 385.50), // Component defined below
+          Text(name.toUpperCase(), style: const TextStyle(color: Color(0xFFD4AF37), fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Text(address, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white60, fontSize: 12)),
+          const SizedBox(height: 15),
+          OutlinedButton.icon(
+            onPressed: () => _launchURL(mapUrl),
+            icon: const Icon(Icons.location_on, size: 16),
+            label: const Text("VIEW ON MAP"),
+            style: OutlinedButton.styleFrom(foregroundColor: const Color(0xFFD4AF37), side: const BorderSide(color: Color(0xFFD4AF37))),
+          )
         ],
       ),
     );
   }
+
+  void _launchURL(String url) async {
+    final Uri uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  Widget _buildSlide(String imageUrl, String title) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Image.network(imageUrl, fit: BoxFit.cover),
+        Container(color: Colors.black.withOpacity(0.3)),
+        Center(child: Text(title, style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: 6))),
+      ],
+    );
+  }
+
+  Widget _sliderArrow(IconData icon, VoidCallback onTap, {double? left, double? right}) {
+    return Positioned(left: left, right: right, top: 0, bottom: 0, child: Center(child: IconButton(icon: Icon(icon, color: const Color(0xFFD4AF37), size: 30), onPressed: onTap)));
+  }
+
+  Widget _buildStoryBox(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(30.0),
+      child: Container(
+        padding: const EdgeInsets.all(25),
+        decoration: BoxDecoration(color: const Color(0xFF2A0000), border: Border.all(color: const Color(0xFFD4AF37)), borderRadius: BorderRadius.circular(12)),
+        child: Column(
+          children: [
+            const Text("OUR STORY", style: TextStyle(color: Color(0xFFD4AF37), letterSpacing: 4, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 15),
+            const Text("Specializing in the finest gold since 2026.", textAlign: TextAlign.center, style: TextStyle(color: Colors.white70)),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () => context.findAncestorStateOfType<_MainNavigationWrapperState>()?._navigateTo(3),
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFD4AF37), foregroundColor: Colors.black),
+              child: const Text("READ MORE"),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
+
+
 
 // --- PAGE 2: SHOP PAGE ---
 class ShopPage extends StatefulWidget {
@@ -387,8 +522,22 @@ void _showPromoPoster(BuildContext context) {
 }
 
 void _launchWhatsApp(String message) async {
-  final url = "https://wa.me/60123456789?text=${Uri.encodeComponent(message)}";
+  final url = "https://wa.me/60195666650?text=${Uri.encodeComponent(message)}";
   if (await canLaunchUrl(Uri.parse(url))) {
     await launchUrl(Uri.parse(url));
+  }
+}
+
+// ADD THIS AT THE BOTTOM OF YOUR FILE
+void _launchURL(String url) async {
+  final Uri uri = Uri.parse(url);
+  try {
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      throw 'Could not launch $url';
+    }
+  } catch (e) {
+    debugPrint(e.toString());
   }
 }
