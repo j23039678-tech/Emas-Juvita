@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:async';
+import 'package:intl/intl.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -443,64 +444,156 @@ class _HeroSectionState extends State<HeroSection> {
 // --- PAGE 2: SHOP PAGE ---
 class ShopPage extends StatefulWidget {
   const ShopPage({super.key});
+
   @override
   State<ShopPage> createState() => _ShopPageState();
 }
 
 class _ShopPageState extends State<ShopPage> {
-  String _selectedLocation = 'Batu Pahat';
+  String _selectedCategory = '916 GOLD';
+
+  // --- 1. DEFINE INDIVIDUAL 916 PRODUCTS HERE ---
+  final List<Product> _products916 = [
+    Product(
+      name: "916 Gold Bracelet Series #1",
+      marketPrice: 385.00,
+      labourFee: 150.0,
+      description: "A premium 916 gold piece crafted with precision and traditional elegance.",
+      category: "916 GOLD",
+      imageUrl: "https://ovapdygzriiojovtnngq.supabase.co/storage/v1/object/public/Images/Gold%20Bracelet.png",
+    ),
+    Product(
+      name: "916 Gold Necklace Series #2",
+      marketPrice: 385.00,
+      labourFee: 120.0,
+      description: "Elegant 916 gold bracelet featuring intricate floral patterns.",
+      category: "916 GOLD",
+      imageUrl: "https://ovapdygzriiojovtnngq.supabase.co/storage/v1/object/public/Images/Gold%20Necklace.png", // Replace with actual image URL
+    ),
+    Product(
+      name: "916 Gold Ring Series #3",
+      marketPrice: 385.00,
+      labourFee: 80.0,
+      description: "Classic 916 gold ring, perfect for daily wear and traditional sets.",
+      category: "916 GOLD",
+      imageUrl: "https://ovapdygzriiojovtnngq.supabase.co/storage/v1/object/public/Images/Gold%20Rings.png", // Replace with actual image URL
+    ),
+  ];
+
+  // --- 2. DEFINE INDIVIDUAL 999 PRODUCTS HERE ---
+  final List<Product> _products999 = [
+    Product(
+      name: "999 Investment Bar",
+      marketPrice: 420.00,
+      labourFee: 80.0,
+      description: "Pure 24K gold bar, the ultimate choice for wealth preservation and investment.",
+      category: "999 GOLD",
+      imageUrl: "https://ovapdygzriiojovtnngq.supabase.co/storage/v1/object/public/Images/Gold%20Bars.png",
+    ),
+  ];
 
   @override
   Widget build(BuildContext context) {
+    // Determine which list to display
+    List<Product> currentList = (_selectedCategory == '916 GOLD') ? _products916 : _products999;
+
     return Container(
-      padding: const EdgeInsets.all(40),
+      padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 15),
       child: Column(
         children: [
-          const Text("PRODUCT CATALOG", style: TextStyle(color: Color(0xFFD4AF37), fontSize: 24, letterSpacing: 4)),
-          const SizedBox(height: 20),
-          DropdownButton<String>(
-            value: _selectedLocation,
-            dropdownColor: const Color(0xFF800000),
-            style: const TextStyle(color: Color(0xFFD4AF37)),
-            items: <String>['Batu Pahat', 'Port Klang', 'Kuala Lumpur'].map((String value) {
-              return DropdownMenuItem<String>(value: value, child: Text("STOCK AT: $value"));
-            }).toList(),
-            onChanged: (val) => setState(() => _selectedLocation = val!),
+          const Text("COLLECTIONS",
+              style: TextStyle(color: Color(0xFFD4AF37), fontSize: 24, letterSpacing: 4, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 30),
+
+          // CATEGORY SELECTOR
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
+              border: Border.all(color: const Color(0xFFD4AF37)),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: _selectedCategory,
+                dropdownColor: const Color(0xFF1A0000),
+                icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFFD4AF37)),
+                style: const TextStyle(color: Color(0xFFD4AF37), fontWeight: FontWeight.bold),
+                items: ['916 GOLD', '999 GOLD'].map((val) => DropdownMenuItem(value: val, child: Text(val))).toList(),
+                onChanged: (val) => setState(() => _selectedCategory = val!),
+              ),
+            ),
           ),
+
           const SizedBox(height: 40),
+
+          // PRODUCT GRID
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2, 
-              childAspectRatio: 0.8, 
-              crossAxisSpacing: 20, 
-              mainAxisSpacing: 20
+              crossAxisCount: 4,
+              childAspectRatio: 0.75,
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 15,
             ),
-            itemCount: 4,
-            itemBuilder: (context, index) => _buildProductCard("Premium 916 Ring #$index", 1250.00),
+            itemCount: currentList.length,
+            itemBuilder: (context, index) {
+              return _buildProductCard(context, currentList[index]);
+            },
           ),
         ],
       ),
     );
   }
 
-  Widget _buildProductCard(String name, double basePrice) {
+  Widget _buildProductCard(BuildContext context, Product product) {
     return Container(
-      decoration: BoxDecoration(border: Border.all(color: const Color(0xFFD4AF37)), borderRadius: BorderRadius.circular(10)),
+      decoration: BoxDecoration(
+        color: const Color(0xFF2A0000),
+        border: Border.all(color: const Color(0xFFD4AF37).withOpacity(0.3)),
+        borderRadius: BorderRadius.circular(8),
+      ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(child: Container(color: Colors.white10, child: const Icon(Icons.image, color: Colors.white24, size: 50))),
+          Expanded(
+            flex: 5,
+            child: ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+              child: Image.network(product.imageUrl, width: double.infinity, fit: BoxFit.cover),
+            ),
+          ),
           Padding(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(8.0),
             child: Column(
               children: [
-                Text(name, style: const TextStyle(color: Colors.white, fontSize: 12)),
-                const SizedBox(height: 10),
+                Text(product.name,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 4),
+                Text("RM ${product.marketPrice.toStringAsFixed(2)}/g",
+                    style: const TextStyle(color: Color(0xFFD4AF37), fontSize: 10)),
+                const SizedBox(height: 8),
                 ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFD4AF37), foregroundColor: Colors.black),
-                  onPressed: () => _launchWhatsApp("I'm interested in $name at $_selectedLocation"),
-                  child: const Text("INQUIRE", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFD4AF37),
+                    minimumSize: const Size(double.infinity, 28),
+                    padding: EdgeInsets.zero,
+                  ),
+                  onPressed: () {
+                    // FIXED: Now correctly navigates to details page
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ProductDetailsPage(product: product),
+                      ),
+                    );
+                  },
+                  child: const Text("VIEW",
+                      style: TextStyle(color: Colors.black, fontSize: 10, fontWeight: FontWeight.bold)),
                 )
               ],
             ),
@@ -511,36 +604,310 @@ class _ShopPageState extends State<ShopPage> {
   }
 }
 
-// --- PAGE 3: LIVE PRICE PAGE ---
-class LivePricePage extends StatelessWidget {
-  const LivePricePage({super.key});
+// --- DYNAMIC PRODUCT DETAILS PAGE ---
+class ProductDetailsPage extends StatefulWidget {
+  final Product product;
+  const ProductDetailsPage({super.key, required this.product});
+
+  @override
+  State<ProductDetailsPage> createState() => _ProductDetailsPageState();
+}
+
+class _ProductDetailsPageState extends State<ProductDetailsPage> {
+  double _selectedWeight = 10.0; // Default variation
+
+  double _calculateTotal() {
+    return (widget.product.marketPrice * _selectedWeight) + widget.product.labourFee;
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 80, horizontal: 20),
-      child: Column(
-        children: [
-          const Text("TODAY'S LIVE GOLD PRICE", style: TextStyle(color: Color(0xFFD4AF37), fontSize: 28, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 40),
-          Table(
-            border: TableBorder.all(color: const Color(0xFFD4AF37)),
-            children: [
-              _tableRow("GOLD TYPE", "PRICE PER GRAM", isHeader: true),
-              _tableRow("Solid Gold (999)", "RM 420.50"),
-              _tableRow("Jewelry Gold (916)", "RM 385.00"),
-              _tableRow("Emas (750)", "RM 315.00"),
-            ],
-          ),
-        ],
+    return Scaffold(
+      backgroundColor: const Color(0xFF1A0000),
+      appBar: AppBar(
+        title: Text(widget.product.name),
+        // IMPROVED CONTRAST: Gold text and icons on dark red background
+        backgroundColor: const Color(0xFF4A0000), 
+        foregroundColor: const Color(0xFFD4AF37), 
+        elevation: 0,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(30),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // IMPROVED IMAGE AREA: Not full width, better fitting
+            Center(
+              child: Container(
+                height: 300,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2A0000), // Slightly lighter frame
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(15),
+                  child: Image.network(
+                    widget.product.imageUrl, 
+                    fit: BoxFit.contain, // Ensures the whole product is visible
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 30),
+            
+            // Header Info
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(widget.product.category, 
+                  style: const TextStyle(color: Color(0xFFD4AF37), letterSpacing: 2, fontWeight: FontWeight.w600)),
+                Text("Market: RM ${widget.product.marketPrice}/g", 
+                  style: const TextStyle(color: Colors.white60, fontSize: 14)),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(widget.product.name, 
+              style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
+            
+            const SizedBox(height: 30),
+            const Text("SELECT WEIGHT VARIATION (GRAMS)", 
+              style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 15),
+
+            // Variation Buttons
+            Row(
+              children: [10.0, 30.0, 50.0].map((weight) {
+                bool isSelected = _selectedWeight == weight;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: isSelected ? const Color(0xFFD4AF37) : Colors.transparent,
+                      side: const BorderSide(color: Color(0xFFD4AF37)),
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                    ),
+                    onPressed: () => setState(() => _selectedWeight = weight),
+                    child: Text("${weight.toInt()}g", 
+                      style: TextStyle(color: isSelected ? Colors.black : Colors.white, fontWeight: FontWeight.bold)),
+                  ),
+                );
+              }).toList(),
+            ),
+
+            const SizedBox(height: 40),
+
+            // Price Breakdown Box
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: const Color(0xFF2A0000),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFD4AF37).withOpacity(0.5))
+              ),
+              child: Column(
+                children: [
+                  _priceRow("Gold Value (${_selectedWeight}g x RM ${widget.product.marketPrice})", 
+                            "RM ${(widget.product.marketPrice * _selectedWeight).toStringAsFixed(2)}"),
+                  const SizedBox(height: 10),
+                  _priceRow("Labour Fee", "RM ${widget.product.labourFee.toStringAsFixed(2)}"),
+                  const Divider(color: Color(0xFFD4AF37), height: 30),
+                  _priceRow("ESTIMATED TOTAL", "RM ${_calculateTotal().toStringAsFixed(2)}", isTotal: true),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 30),
+            const Text("DESCRIPTION", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            Text(widget.product.description, style: const TextStyle(color: Colors.white70, fontSize: 16, height: 1.6)),
+            
+            const SizedBox(height: 50),
+            
+            // Call to Action
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFD4AF37), 
+                  padding: const EdgeInsets.all(20),
+                ),
+                onPressed: () {
+                  // Assuming _launchWhatsApp is defined elsewhere
+                },
+                child: const Text("INQUIRE VIA WHATSAPP", 
+                  style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 16)),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  TableRow _tableRow(String c1, String c2, {bool isHeader = false}) {
-    return TableRow(
+  Widget _priceRow(String label, String value, {bool isTotal = false}) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Padding(padding: const EdgeInsets.all(15), child: Text(c1, style: TextStyle(color: isHeader ? const Color(0xFFD4AF37) : Colors.white, fontWeight: isHeader ? FontWeight.bold : FontWeight.normal))),
-        Padding(padding: const EdgeInsets.all(15), child: Text(c2, style: TextStyle(color: Colors.white, fontWeight: isHeader ? FontWeight.bold : FontWeight.normal))),
+        Text(label, style: TextStyle(
+          color: isTotal ? Colors.white : Colors.white60, 
+          fontSize: isTotal ? 16 : 14, 
+          fontWeight: isTotal ? FontWeight.bold : FontWeight.normal)),
+        Text(value, style: TextStyle(
+          color: const Color(0xFFD4AF37), 
+          fontSize: isTotal ? 20 : 14, 
+          fontWeight: FontWeight.bold)),
+      ],
+    );
+  }
+}
+
+// --- UPDATED DATA MODEL ---
+class Product {
+  final String name;
+  final double marketPrice;
+  final String description;
+  final String category;
+  final double labourFee;
+  final String imageUrl;
+
+  Product({
+    required this.name, 
+    required this.marketPrice, 
+    required this.description, 
+    required this.category,
+    required this.labourFee,
+    required this.imageUrl,
+  });
+}
+
+// --- PAGE 3: LIVE PRICE PAGE ---
+class LivePricePage extends StatefulWidget {
+  const LivePricePage({super.key});
+
+  @override
+  State<LivePricePage> createState() => _LivePricePageState();
+}
+
+class _LivePricePageState extends State<LivePricePage> {
+  // 1. Centralized Data: Change these and the whole UI updates
+  double gold916Price = 389.00;
+  double gold999Price = 420.00;
+  double gold750Price = 314.00;
+  
+  String lastUpdated = "March 13, 2026 5:53 am";
+
+  // 2. Logic to update price and timestamp simultaneously
+  void updateGoldPrice(double newPrice) {
+    setState(() {
+      gold916Price = newPrice;
+      // Generates a real-time timestamp
+      lastUpdated = DateFormat('MMMM dd, yyyy h:mm a').format(DateTime.now());
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF1A0000),
+      body: SingleChildScrollView(
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 60, horizontal: 20),
+          width: double.infinity,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // HEADER
+              RichText(
+                textAlign: TextAlign.center,
+                text: const TextSpan(
+                  style: TextStyle(fontSize: 22, color: Colors.white, fontFamily: 'Serif'),
+                  children: [
+                    TextSpan(text: "LIVE "),
+                    TextSpan(text: "GOLD", style: TextStyle(color: Color(0xFFD4AF37), fontWeight: FontWeight.bold)),
+                    TextSpan(text: " PRICE (per gram):"),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // --- CONNECTED BIG PRICE ---
+              Text(
+                "RM${gold916Price.toStringAsFixed(2)}",
+                style: const TextStyle(
+                  color: Color(0xFFD4AF37),
+                  fontSize: 80,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: -2,
+                ),
+              ),
+              
+              // --- DYNAMIC TIMESTAMP ---
+              Text(
+                "Last Updated: $lastUpdated",
+                style: const TextStyle(color: Colors.white54, fontSize: 12),
+              ),
+
+              const SizedBox(height: 60),
+
+              // PRICE TABLE
+              Container(
+                constraints: const BoxConstraints(maxWidth: 600),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(15),
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withOpacity(0.4), blurRadius: 20, offset: const Offset(0, 10))
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(15),
+                  child: Table(
+                    children: [
+                      _tableHeader("GOLD TYPE", "PRICE (PER GRAM)"),
+                      _tableRow("Gold 999 (24k)", "RM${gold999Price.toStringAsFixed(2)}"),
+                      
+                      // --- CONNECTED TABLE PRICE ---
+                      _tableRow("Gold 916 (22k)", "RM${gold916Price.toStringAsFixed(2)}", isHighlighted: true),
+                      
+                      _tableRow("Gold 750 (18k)", "RM${gold750Price.toStringAsFixed(2)}"),
+                    ],
+                  ),
+                ),
+              ),
+              
+              const SizedBox(height: 40),
+              
+              // TEMPORARY: Button to test the update (You can remove this later)
+              ElevatedButton(
+                onPressed: () => updateGoldPrice(395.50), 
+                child: const Text("Simulate Price Update"),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  TableRow _tableHeader(String c1, String c2) {
+    return TableRow(
+      decoration: const BoxDecoration(color: Color(0xFFFAF9F6)),
+      children: [
+        Padding(padding: const EdgeInsets.all(20), child: Text(c1, style: const TextStyle(color: Color(0xFFBC9340), fontWeight: FontWeight.bold, fontSize: 13))),
+        Padding(padding: const EdgeInsets.all(20), child: Text(c2, style: const TextStyle(color: Color(0xFFBC9340), fontWeight: FontWeight.bold, fontSize: 13), textAlign: TextAlign.right)),
+      ],
+    );
+  }
+
+  TableRow _tableRow(String label, String price, {bool isHighlighted = false}) {
+    return TableRow(
+      decoration: BoxDecoration(
+        color: isHighlighted ? const Color(0xFFFFFBEA) : Colors.white,
+        border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+      ),
+      children: [
+        Padding(padding: const EdgeInsets.all(22), child: Text(label, style: const TextStyle(color: Color(0xFF444444), fontSize: 15, fontWeight: FontWeight.w500))),
+        Padding(padding: const EdgeInsets.all(22), child: Text(price, style: const TextStyle(color: Color(0xFF444444), fontSize: 15, fontWeight: FontWeight.bold), textAlign: TextAlign.right)),
       ],
     );
   }
