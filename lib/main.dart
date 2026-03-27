@@ -3,6 +3,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:async';
 import 'package:intl/intl.dart';
+import 'dart:ui_web' as ui;
+import 'package:web/web.dart' as web; 
+import 'package:font_awesome_flutter/font_awesome_flutter.dart'; // Recommended for social icons
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -789,30 +792,28 @@ class LivePricePage extends StatefulWidget {
 }
 
 class _LivePricePageState extends State<LivePricePage> {
-  // 1. Centralized Data: Change these and the whole UI updates
   double gold916Price = 389.00;
   double gold999Price = 420.00;
   double gold750Price = 314.00;
   
   String lastUpdated = "March 13, 2026 5:53 am";
 
-  // 2. Logic to update price and timestamp simultaneously
   void updateGoldPrice(double newPrice) {
     setState(() {
       gold916Price = newPrice;
-      // Generates a real-time timestamp
       lastUpdated = DateFormat('MMMM dd, yyyy h:mm a').format(DateTime.now());
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF1A0000),
-      body: SingleChildScrollView(
-        child: Container(
+    // REMOVED SCAFFOLD - This prevents the "blank screen" conflict on web
+    return Container(
+      width: double.infinity,
+      color: const Color(0xFF1A0000), // Background color moved here
+      child: SingleChildScrollView(
+        child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 60, horizontal: 20),
-          width: double.infinity,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -830,7 +831,7 @@ class _LivePricePageState extends State<LivePricePage> {
               ),
               const SizedBox(height: 20),
 
-              // --- CONNECTED BIG PRICE ---
+              // CONNECTED BIG PRICE
               Text(
                 "RM${gold916Price.toStringAsFixed(2)}",
                 style: const TextStyle(
@@ -841,7 +842,6 @@ class _LivePricePageState extends State<LivePricePage> {
                 ),
               ),
               
-              // --- DYNAMIC TIMESTAMP ---
               Text(
                 "Last Updated: $lastUpdated",
                 style: const TextStyle(color: Colors.white54, fontSize: 12),
@@ -862,13 +862,15 @@ class _LivePricePageState extends State<LivePricePage> {
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(15),
                   child: Table(
+                    // Added fixed column widths to prevent table layout crashes
+                    columnWidths: const {
+                      0: FlexColumnWidth(2),
+                      1: FlexColumnWidth(1),
+                    },
                     children: [
                       _tableHeader("GOLD TYPE", "PRICE (PER GRAM)"),
                       _tableRow("Gold 999 (24k)", "RM${gold999Price.toStringAsFixed(2)}"),
-                      
-                      // --- CONNECTED TABLE PRICE ---
                       _tableRow("Gold 916 (22k)", "RM${gold916Price.toStringAsFixed(2)}", isHighlighted: true),
-                      
                       _tableRow("Gold 750 (18k)", "RM${gold750Price.toStringAsFixed(2)}"),
                     ],
                   ),
@@ -877,10 +879,10 @@ class _LivePricePageState extends State<LivePricePage> {
               
               const SizedBox(height: 40),
               
-              // TEMPORARY: Button to test the update (You can remove this later)
               ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFD4AF37)),
                 onPressed: () => updateGoldPrice(395.50), 
-                child: const Text("Simulate Price Update"),
+                child: const Text("Simulate Price Update", style: TextStyle(color: Colors.black)),
               ),
             ],
           ),
@@ -916,33 +918,300 @@ class _LivePricePageState extends State<LivePricePage> {
 // --- PAGE 4: ABOUT PAGE ---
 class AboutPage extends StatelessWidget {
   const AboutPage({super.key});
+
   @override
   Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.all(100),
-      child: Text("Emas Juvita is your premium partner in fine gold jewelry.", 
-        textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontSize: 18)),
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          // --- SECTION 1: MORE THAN JUST GOLD ---
+          Container(
+            color: const Color(0xFF4A0E0E), // Match the dark maroon background
+            padding: const EdgeInsets.symmetric(vertical: 80, horizontal: 100),
+            child: Row(
+              children: [
+                // Left Column: Text Content
+                Expanded(
+                  flex: 3,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      RichText(
+                        text: const TextSpan(
+                          style: TextStyle(fontSize: 32, fontFamily: 'Serif', color: Colors.white),
+                          children: [
+                            TextSpan(text: "More Than Just "),
+                            TextSpan(text: "Gold", style: TextStyle(color: Color(0xFFD4AF37))),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 40),
+                      const Text(
+                        "Emas Juvita was founded on a simple belief: that fine jewelry should not just be a luxury, but a meaningful milestone accessible to everyone in our community. Based in the heart of Batu Pahat, we have spent years building a reputation centered on transparency, integrity, and exquisite craftsmanship.",
+                        style: TextStyle(color: Colors.white70, fontSize: 16, height: 1.6),
+                      ),
+                      const SizedBox(height: 20),
+                      const Text(
+                        "We specialize in premium 916 and 999 gold, ensuring that every piece you take home is a lasting investment in quality. To us, you aren’t just a customer; we treat every transaction as a long-term partnership built on trust.",
+                        style: TextStyle(color: Colors.white70, fontSize: 16, height: 1.6),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 60),
+                // Right Column: Image Placeholder
+                Expanded(
+                  flex: 2,
+                  child: Container(
+                    height: 600,
+                    decoration: BoxDecoration(
+                      color: Colors.white10,
+                      borderRadius: BorderRadius.circular(20),
+                      image: const DecorationImage(
+                       image: NetworkImage('https://ovapdygzriiojovtnngq.supabase.co/storage/v1/object/public/Images/About%20img1.png'),
+                       fit: BoxFit.cover,
+                     ),
+                     ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // --- SECTION 2: THE JUVITA STANDARDS ---
+          Container(
+            color: Colors.black, // Match the black background
+            padding: const EdgeInsets.symmetric(vertical: 80, horizontal: 100),
+            child: Row(
+              children: [
+                // Left Column: Image Placeholder
+                Expanded(
+                  flex: 2,
+                  child: Container(
+                    height: 400,
+                    decoration: BoxDecoration(
+                      color: Colors.white10,
+                      borderRadius: BorderRadius.circular(20),
+                    image: const DecorationImage(
+                       image: NetworkImage('https://ovapdygzriiojovtnngq.supabase.co/storage/v1/object/public/Images/About%20img2.png'),
+                       fit: BoxFit.cover,
+                     ),
+                     ),
+                  ),
+                ),
+                const SizedBox(width: 60),
+                // Right Column: Standards Content
+                Expanded(
+                  flex: 3,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "The Juvita Standards",
+                        style: TextStyle(fontSize: 32, fontFamily: 'Serif', color: Colors.white),
+                      ),
+                      const SizedBox(height: 40),
+                      _buildStandardItem("Transparent Pricing", "We offer competitive workmanship rates with no hidden surprises."),
+                      _buildStandardItem("Quality Guaranteed", "Every item in our catalog is strictly vetted for purity and authenticity."),
+                      _buildStandardItem("Customer-First Service", "From free professional cleaning to high-value buy-backs, we support you long after your initial purchase."),
+                      _buildStandardItem("Flexible Savings", "We provide accessible gold saving plans (STE) to help you grow your wealth at your own pace."),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Helper widget for standard bullet points
+  Widget _buildStandardItem(String title, String description) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 25),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.circle, size: 6, color: Colors.white),
+              const SizedBox(width: 10),
+              Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+            ],
+          ),
+          const SizedBox(height: 5),
+          Padding(
+            padding: const EdgeInsets.only(left: 16),
+            child: Text(description, style: const TextStyle(color: Colors.white70, fontSize: 14)),
+          ),
+        ],
+      ),
     );
   }
 }
 
 // --- PAGE 5: CONTACT PAGE ---
-class ContactPage extends StatelessWidget {
+class ContactPage extends StatefulWidget {
   const ContactPage({super.key});
+
+  @override
+  State<ContactPage> createState() => _ContactPageState();
+}
+
+class _ContactPageState extends State<ContactPage> {
+  @override
+  void initState() {
+    super.initState();
+    // Registering specific embed links for your Batu Pahat locations
+    _registerMap("hq-map", "https://maps.google.com/maps?q=Jalan%20Flora%20Utama%205%20Batu%20Pahat&t=&z=15&ie=UTF8&iwloc=&output=embed");
+    _registerMap("penggaram-map", "https://maps.google.com/maps?q=Jalan%20Penggaram%20Batu%20Pahat&t=&z=15&ie=UTF8&iwloc=&output=embed");
+    _registerMap("raja-map", "https://maps.google.com/maps?q=Parit%20Raja%20Batu%20Pahat&t=&z=15&ie=UTF8&iwloc=&output=embed");
+    _registerMap("sulong-map", "https://maps.google.com/maps?q=Parit%20Sulong%20Batu%20Pahat&t=&z=15&ie=UTF8&iwloc=&output=embed");
+  }
+
+  void _registerMap(String viewId, String url) {
+    ui.platformViewRegistry.registerViewFactory(
+      viewId,
+      (int id) => web.HTMLIFrameElement()
+        ..width = '100%'
+        ..height = '100%'
+        ..src = url
+        ..style.border = 'none',
+    );
+  }
+
+  // Helper function to launch external maps
+  Future<void> _launchUrl(String url) async {
+    final Uri uri = Uri.parse(url);
+    if (!await launchUrl(uri)) {
+      throw Exception('Could not launch $url');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(100),
+    return Container(
+      width: double.infinity,
+      color: const Color(0xFF1A0000), 
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(vertical: 80, horizontal: 100),
+        child: Column(
+          children: [
+            const Text(
+              "VISIT OUR LOCATIONS",
+              style: TextStyle(
+                color: Color(0xFFD4AF37), 
+                fontSize: 32, 
+                fontWeight: FontWeight.bold, 
+                fontFamily: 'Serif'
+              ),
+            ),
+            const SizedBox(height: 60),
+
+            GridView.count(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisCount: 2,
+              crossAxisSpacing: 30,
+              mainAxisSpacing: 30,
+              childAspectRatio: 1.05, 
+              children: [
+                _buildMapCard(
+                  "Kedai Emas Juvita HQ", 
+                  "45, Jalan Flora Utama 5, 83000 Batu Pahat, Johor", 
+                  "hq-map",
+                  "https://maps.app.goo.gl/HQ_LINK"
+                ),
+                _buildMapCard(
+                  "Kedai Emas Juvita Penggaram", 
+                  "34, Jalan Penggaram, 83000 Batu Pahat, Johor", 
+                  "penggaram-map",
+                  "https://maps.app.goo.gl/PENGGARAM_LINK"
+                ),
+                _buildMapCard(
+                  "Kedai Emas Juvita Parit Raja", 
+                  "Pekan Parit Raja, 86400 Batu Pahat, Johor", 
+                  "raja-map",
+                  "https://maps.app.goo.gl/RAJA_LINK"
+                ),
+                _buildMapCard(
+                  "Kedai Emas Juvita Parit Sulong", 
+                  "Pekan Parit Sulong, 83500 Batu Pahat, Johor", 
+                  "sulong-map",
+                  "https://maps.app.goo.gl/SULONG_LINK"
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMapCard(String title, String address, String mapId, String googleMapsUrl) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF2D0A0A), 
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFD4AF37).withOpacity(0.3)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.5), 
+            blurRadius: 15, 
+            offset: const Offset(0, 10)
+          )
+        ],
+      ),
+      padding: const EdgeInsets.all(25),
       child: Column(
         children: [
-          const Text("VISIT OUR LOCATIONS", style: TextStyle(color: Color(0xFFD4AF37), fontSize: 24)),
+          Text(
+            title, 
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Colors.white, 
+              fontSize: 22, 
+              fontFamily: 'Serif',
+              fontWeight: FontWeight.w600,
+            )
+          ),
           const SizedBox(height: 20),
-          const Text("Batu Pahat | Port Klang | Kuala Lumpur", style: TextStyle(color: Colors.white70)),
-          const SizedBox(height: 40),
-          ElevatedButton(
-            onPressed: () => _launchWhatsApp("General Inquiry"),
-            child: const Text("Chat on WhatsApp"),
-          )
+          
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: HtmlElementView(viewType: mapId),
+            ),
+          ),
+          
+          const SizedBox(height: 20),
+          
+          TextButton(
+            onPressed: () => _launchUrl(googleMapsUrl),
+            style: TextButton.styleFrom(padding: EdgeInsets.zero),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.only(top: 2.0),
+                  child: Icon(Icons.location_on, color: Color(0xFFD4AF37), size: 22),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    address,
+                    style: const TextStyle(
+                      color: Colors.white, 
+                      fontSize: 16,        
+                      fontWeight: FontWeight.bold, 
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -952,32 +1221,81 @@ class ContactPage extends StatelessWidget {
 // --- PAGE 6: LINKTREE PAGE ---
 class LinktreePage extends StatelessWidget {
   const LinktreePage({super.key});
+
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 80),
-        width: 300,
-        child: Column(
-          children: [
-            _linkButton("Main Website"),
-            _linkButton("Instagram"),
-            _linkButton("Facebook"),
-          ],
+    // 1. Remove Scaffold to prevent layout conflicts
+    // 2. Use a Container with width: double.infinity to fill the parent
+    return Container(
+      width: double.infinity,
+      height: double.infinity, // Ensures it takes up the full available body space
+      color: const Color(0xFF1A0000), 
+      child: Center(
+        child: SingleChildScrollView(
+          // Add physics to ensure the scroll view is active
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 400),
+            child: Column(
+              mainAxisSize: MainAxisSize.min, 
+              children: [
+                const Text(
+                  "Follow Us for Daily Rates",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 26,
+                    fontFamily: 'Serif',
+                  ),
+                ),
+                const SizedBox(height: 30),
+                _linkButton("Emas Juvita | Whatsapp 1", FontAwesomeIcons.whatsapp, const Color(0xFF25D366)),
+                _linkButton("Emas Juvita | Whatsapp 2", FontAwesomeIcons.whatsapp, const Color(0xFF25D366)),
+                _linkButton("(Main): @emasjuvita", FontAwesomeIcons.instagram, const Color(0xFFE4405F)),
+                _linkButton("Kedai Emas Juvita", FontAwesomeIcons.facebook, const Color(0xFF1877F2)),
+                _linkButton("Kedai Emas Juvita Official", FontAwesomeIcons.telegram, const Color(0xFF26A5E4)),
+                _linkButton("@emasjuvita", FontAwesomeIcons.tiktok, Colors.white),
+                _linkButton("@emasjuvita", Icons.auto_awesome_motion, const Color(0xFFFF2442)), 
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
 
-  Widget _linkButton(String title) {
+  // Keep your _linkButton helper as is
+  Widget _linkButton(String title, dynamic icon, Color iconColor) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 15),
       child: SizedBox(
         width: double.infinity,
+        height: 55,
         child: OutlinedButton(
-          style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0xFFD4AF37))),
+          style: OutlinedButton.styleFrom(
+            side: const BorderSide(color: Color(0xFFD4AF37), width: 1.2),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+          ),
           onPressed: () {},
-          child: Text(title, style: const TextStyle(color: Colors.white)),
+          child: Row(
+            children: [
+              const SizedBox(width: 10),
+              SizedBox(
+                width: 25,
+                child: icon is FaIconData
+                    ? FaIcon(icon, color: iconColor, size: 20)
+                    : Icon(icon as IconData, color: iconColor, size: 20),
+              ),
+              const SizedBox(width: 15),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1022,13 +1340,6 @@ void _showPromoPoster(BuildContext context) {
       actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text("CLOSE"))],
     ),
   );
-}
-
-void _launchWhatsApp(String message) async {
-  final url = "https://wa.me/60195666650?text=${Uri.encodeComponent(message)}";
-  if (await canLaunchUrl(Uri.parse(url))) {
-    await launchUrl(Uri.parse(url));
-  }
 }
 
 void _launchURL(String url) async {
