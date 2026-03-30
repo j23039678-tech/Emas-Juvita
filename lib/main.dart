@@ -43,15 +43,29 @@ class MainNavigationWrapper extends StatefulWidget {
 
 class MainNavigationWrapperState extends State<MainNavigationWrapper> {
   int _currentPageIndex = 0;
+  bool _isLoggedIn = false;
   final ScrollController _scrollController = ScrollController();
+  final supabase = Supabase.instance.client;
 
   @override
   void initState() {
     super.initState();
+    
+    // 1. Listen to Supabase Auth changes
+    supabase.auth.onAuthStateChange.listen((data) {
+      if (mounted) {
+        setState(() {
+          _isLoggedIn = data.session != null;
+        });
+      }
+    });
+
+    // 2. Show your Promo Poster after 2 seconds
     Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) _showPromoPoster(context);
+      if (mounted) _showPromoPoster(context); 
     });
   }
+
 
   void _navigateTo(int index) {
     setState(() => _currentPageIndex = index);
@@ -60,32 +74,79 @@ class MainNavigationWrapperState extends State<MainNavigationWrapper> {
     }
   }
 
+  // --- DYNAMIC AUTH ACTION ---
+  Future<void> _handleAuthAction() async {
+    if (_isLoggedIn) {
+      await supabase.auth.signOut();
+      _navigateTo(0); // Redirect home on logout
+    } else {
+      _navigateTo(6); // Redirect to Login Choice Page
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(80),
+        preferredSize: const Size.fromHeight(100), 
         child: Container(
           decoration: const BoxDecoration(
-            color: Color(0xFF800000),
+            color: Color(0xFF800000), // Original Maroon
             border: Border(bottom: BorderSide(color: Color(0xFFD4AF37), width: 1)),
           ),
           child: SafeArea(
-            child: Row(
-              children: [
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 24),
-                  child: Text("EMAS JUVITA", style: TextStyle(color: Color(0xFFD4AF37), fontSize: 20, letterSpacing: 3, fontWeight: FontWeight.bold)),
-                ),
-                const Spacer(),
-                _navButton("HOME", 0),
-                _navButton("SHOP", 1),
-                _navButton("LIVE PRICE", 2),
-                _navButton("ABOUT", 3),
-                _navButton("CONTACT", 4),
-                _navButton("LINKS", 5),
-                const SizedBox(width: 20),
-              ],
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 40),
+              child: Row(
+                children: [
+                  // --- ICON + STORE NAME ---
+                  Row(
+                    children: [
+                      const Icon(Icons.stars, color: Color(0xFFD4AF37), size: 32),
+                      const SizedBox(width: 12),
+                      const Text(
+                        "EMAS JUVITA", 
+                        style: TextStyle(
+                          color: Color(0xFFD4AF37), 
+                          fontSize: 24, 
+                          letterSpacing: 3, 
+                          fontWeight: FontWeight.bold
+                        )
+                      ),
+                    ],
+                  ),
+                  
+                  const Spacer(),
+
+                  // --- NAV BUTTONS ---
+                  _navButton("HOME", 0),
+                  _navButton("SHOP", 1),
+                  _navButton("LIVE PRICE", 2),
+                  _navButton("ABOUT", 3),
+                  _navButton("CONTACT", 4),
+                  _navButton("LINKS", 5),
+                  
+                  const SizedBox(width: 20),
+                  
+                  // --- DYNAMIC LOGIN/LOGOUT BUTTON ---
+                  InkWell(
+                    onTap: _handleAuthAction,
+                    child: Container(
+                      height: 45,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFD4AF37),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      alignment: Alignment.center,
+                      child: Text(
+                        _isLoggedIn ? "LOGOUT" : "LOGIN", 
+                        style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -95,32 +156,44 @@ class MainNavigationWrapperState extends State<MainNavigationWrapper> {
         child: Column(
           children: [
             _getPage(_currentPageIndex),
-            const FooterSection(),
+            // const FooterSection(),
           ],
         ),
       ),
     );
   }
 
-  Widget _getPage(int index) {
-    switch (index) {
-      case 0: return const HeroSection();
-      case 1: return const ShopPage();
-      case 2: return const LivePricePage();
-      case 3: return const AboutPage();
-      case 4: return const ContactPage();
-      case 5: return const LinktreePage();
-      default: return const HeroSection();
-    }
-  }
-
   Widget _navButton(String title, int index) {
     bool isSelected = _currentPageIndex == index;
-    return TextButton(
-      onPressed: () => _navigateTo(index),
-      child: Text(title, style: TextStyle(color: isSelected ? Colors.white : const Color(0xFFD4AF37), fontSize: 12)),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 5),
+      child: TextButton(
+        onPressed: () => _navigateTo(index),
+        child: Text(
+          title, 
+          style: TextStyle(
+            color: isSelected ? Colors.white : const Color(0xFFD4AF37), 
+            fontSize: 13, 
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          )
+        ),
+      ),
     );
   }
+
+Widget _getPage(int index) {
+  switch (index) {
+    case 0: return const HeroSection();
+    case 1: return const ShopPage();
+    case 2: return const LivePricePage();
+    case 3: return const AboutPage();
+    case 4: return const ContactPage();
+    case 5: return const LinktreePage();
+    case 6: 
+      return _isLoggedIn ? const AdminApprovalPage() : const AuthPage();
+    default: return const HeroSection();
+  }
+}
 }
 
 // --- PAGE 1: HOMEPAGE ---
@@ -1224,40 +1297,42 @@ class LinktreePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 1. Remove Scaffold to prevent layout conflicts
-    // 2. Use a Container with width: double.infinity to fill the parent
-    return Container(
-      width: double.infinity,
-      height: double.infinity, // Ensures it takes up the full available body space
+    // Using Material ensures text styles and ink ripples work 
+    // without needing a full Scaffold if nested.
+    return Material(
       color: const Color(0xFF1A0000), 
-      child: Center(
-        child: SingleChildScrollView(
-          // Add physics to ensure the scroll view is active
-          physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 400),
-            child: Column(
-              mainAxisSize: MainAxisSize.min, 
-              children: [
-                const Text(
-                  "Follow Us for Daily Rates",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 26,
-                    fontFamily: 'Serif',
+      child: SafeArea( // Ensures content doesn't hit notches/status bars
+        child: Center(
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
+            child: Container(
+              // This ensures the column doesn't stay invisible/zero-size
+              constraints: const BoxConstraints(maxWidth: 400),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.link, color: Color(0xFFD4AF37), size: 40),
+                  const SizedBox(height: 20),
+                  const Text(
+                    "Follow Us for Daily Rates",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.2,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 30),
-                _linkButton("Emas Juvita | Whatsapp 1", FontAwesomeIcons.whatsapp, const Color(0xFF25D366)),
-                _linkButton("Emas Juvita | Whatsapp 2", FontAwesomeIcons.whatsapp, const Color(0xFF25D366)),
-                _linkButton("(Main): @emasjuvita", FontAwesomeIcons.instagram, const Color(0xFFE4405F)),
-                _linkButton("Kedai Emas Juvita", FontAwesomeIcons.facebook, const Color(0xFF1877F2)),
-                _linkButton("Kedai Emas Juvita Official", FontAwesomeIcons.telegram, const Color(0xFF26A5E4)),
-                _linkButton("@emasjuvita", FontAwesomeIcons.tiktok, Colors.white),
-                _linkButton("@emasjuvita", Icons.auto_awesome_motion, const Color(0xFFFF2442)), 
-              ],
+                  const SizedBox(height: 40),
+                  _linkButton("Emas Juvita | Whatsapp 1", FontAwesomeIcons.whatsapp, const Color(0xFF25D366)),
+                  _linkButton("Emas Juvita | Whatsapp 2", FontAwesomeIcons.whatsapp, const Color(0xFF25D366)),
+                  _linkButton("Instagram: @emasjuvita", FontAwesomeIcons.instagram, const Color(0xFFE4405F)),
+                  _linkButton("Facebook: Kedai Emas Juvita", FontAwesomeIcons.facebook, const Color(0xFF1877F2)),
+                  _linkButton("Telegram Official", FontAwesomeIcons.telegram, const Color(0xFF26A5E4)),
+                  _linkButton("TikTok: @emasjuvita", FontAwesomeIcons.tiktok, Colors.white),
+                ],
+              ),
             ),
           ),
         ),
@@ -1265,38 +1340,272 @@ class LinktreePage extends StatelessWidget {
     );
   }
 
-  // Keep your _linkButton helper as is
   Widget _linkButton(String title, dynamic icon, Color iconColor) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 15),
-      child: SizedBox(
-        width: double.infinity,
-        height: 55,
-        child: OutlinedButton(
-          style: OutlinedButton.styleFrom(
-            side: const BorderSide(color: Color(0xFFD4AF37), width: 1.2),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-          ),
-          onPressed: () {},
-          child: Row(
-            children: [
-              const SizedBox(width: 10),
-              SizedBox(
-                width: 25,
-                child: icon is FaIconData
-                    ? FaIcon(icon, color: iconColor, size: 20)
-                    : Icon(icon as IconData, color: iconColor, size: 20),
+      child: OutlinedButton(
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size(double.infinity, 60), // Better than wrapping in SizedBox
+          side: const BorderSide(color: Color(0xFFD4AF37), width: 1.5),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+        onPressed: () {},
+        child: Row(
+          children: [
+            const SizedBox(width: 5),
+            SizedBox(
+              width: 30,
+              child: icon is IconData 
+                ? Icon(icon, color: iconColor, size: 24)
+                : FaIcon(icon, color: iconColor, size: 22),
+            ),
+            const SizedBox(width: 15),
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(
+                  color: Colors.white, 
+                  fontSize: 15, 
+                  fontWeight: FontWeight.w500
+                ),
               ),
-              const SizedBox(width: 15),
-              Expanded(
+            ),
+            const Icon(Icons.arrow_forward_ios, color: Colors.white24, size: 14),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// --- PAGE 7: REGISTRATION PAGE ---
+class AuthPage extends StatefulWidget {
+  const AuthPage({super.key});
+
+  @override
+  State<AuthPage> createState() => _AuthPageState();
+}
+
+class _AuthPageState extends State<AuthPage> {
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final supabase = Supabase.instance.client;
+  
+  bool _isLoading = false;
+  bool _isLoginMode = true; // Toggle between Login and Register
+
+  Future<void> _handleAuth() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+
+    if (email.isEmpty || password.isEmpty) return;
+
+    setState(() => _isLoading = true);
+    try {
+      if (_isLoginMode) {
+        // --- LOGIN LOGIC ---
+        await supabase.auth.signInWithPassword(email: email, password: password);
+        // Supabase listener in your NavWrapper will handle the UI switch
+      } else {
+        // --- REGISTER LOGIC ---
+        final response = await supabase.auth.signUp(email: email, password: password);
+        if (response.user != null) {
+          await supabase.from('profiles').insert({
+            'id': response.user!.id,
+            'email': response.user!.email,
+            'is_vip': true,
+            'is_approved': false,
+          });
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("Request sent! Awaiting Admin Approval.")),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 80, horizontal: 24),
+      child: Center(
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 400),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                _isLoginMode ? "VIP LOGIN" : "VIP REGISTRATION",
+                style: const TextStyle(color: Color(0xFFD4AF37), fontSize: 28, fontWeight: FontWeight.bold, letterSpacing: 2),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                _isLoginMode ? "Welcome back, Member." : "Request exclusive access to live gold rates",
+                style: const TextStyle(color: Colors.white70, fontSize: 14),
+              ),
+              const SizedBox(height: 40),
+              _buildField(_emailController, "Email Address", Icons.email),
+              const SizedBox(height: 20),
+              _buildField(_passwordController, "Password", Icons.lock, isPass: true),
+              const SizedBox(height: 40),
+              
+              // --- MAIN BUTTON ---
+              SizedBox(
+                width: double.infinity,
+                height: 55,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFD4AF37)),
+                  onPressed: _isLoading ? null : _handleAuth,
+                  child: _isLoading
+                      ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2))
+                      : Text(_isLoginMode ? "SIGN IN" : "REQUEST ACCESS", 
+                          style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                ),
+              ),
+              
+              const SizedBox(height: 20),
+
+              // --- TOGGLE BUTTON ---
+              TextButton(
+                onPressed: () => setState(() => _isLoginMode = !_isLoginMode),
                 child: Text(
-                  title,
-                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                  _isLoginMode ? "New here? Request VIP Access" : "Already a member? Sign In",
+                  style: const TextStyle(color: Color(0xFFD4AF37)),
                 ),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildField(TextEditingController controller, String label, IconData icon, {bool isPass = false}) {
+    return TextField(
+      controller: controller,
+      obscureText: isPass,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: Colors.white60),
+        prefixIcon: Icon(icon, color: const Color(0xFFD4AF37)),
+        enabledBorder: const OutlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+        focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Color(0xFFD4AF37))),
+        filled: true,
+        fillColor: Colors.white.withOpacity(0.05),
+      ),
+    );
+  }
+}
+
+// --- PAGE 8: ADMIN PAGE ---
+class AdminApprovalPage extends StatefulWidget {
+  const AdminApprovalPage({super.key});
+
+  @override
+  State<AdminApprovalPage> createState() => _AdminApprovalPageState();
+}
+
+class _AdminApprovalPageState extends State<AdminApprovalPage> {
+  final supabase = Supabase.instance.client;
+  List<dynamic> _pendingUsers = [];
+  bool _isFetching = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchPendingUsers();
+  }
+
+  Future<void> _fetchPendingUsers() async {
+    try {
+      final data = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('is_approved', false);
+      
+      if (mounted) {
+        setState(() {
+          _pendingUsers = data;
+          _isFetching = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isFetching = false);
+    }
+  }
+
+  Future<void> _approveUser(String userId) async {
+    await supabase
+        .from('profiles')
+        .update({'is_approved': true})
+        .eq('id', userId);
+        
+    _fetchPendingUsers(); 
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(40),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "PENDING APPROVALS",
+            style: TextStyle(color: Color(0xFFD4AF37), fontSize: 28, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            "${_pendingUsers.length} users awaiting VIP access",
+            style: const TextStyle(color: Colors.white70),
+          ),
+          const SizedBox(height: 30),
+          if (_isFetching)
+            const Center(child: CircularProgressIndicator(color: Color(0xFFD4AF37)))
+          else if (_pendingUsers.isEmpty)
+            const Text("No pending requests.", style: TextStyle(color: Colors.white38))
+          else
+            // Changed from Expanded to ListView with shrinkWrap to fix scrolling
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _pendingUsers.length,
+              itemBuilder: (context, index) {
+                final user = _pendingUsers[index];
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.white10),
+                  ),
+                  child: ListTile(
+                    title: Text(user['email'] ?? 'No Email', style: const TextStyle(color: Colors.white)),
+                    subtitle: const Text("Requesting VIP Access", style: TextStyle(color: Colors.white54, fontSize: 12)),
+                    trailing: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFD4AF37),
+                        minimumSize: const Size(100, 36),
+                      ),
+                      onPressed: () => _approveUser(user['id']),
+                      child: const Text("APPROVE", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                );
+              },
+            ),
+        ],
       ),
     );
   }
