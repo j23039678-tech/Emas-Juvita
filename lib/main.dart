@@ -177,7 +177,15 @@ class MainNavigationWrapperState extends State<MainNavigationWrapper> {
                     onTap: () => _navigateTo(0),
                     child: Row(
                       children: [
-                        const Icon(Icons.stars, color: Color(0xFFD4AF37), size: 28),
+                        // UPDATED: Standard icon changed to Supabase Logo Network Image
+                        Image.network(
+                          'https://ovapdygzriiojovtnngq.supabase.co/storage/v1/object/public/Images/Logo.png',
+                          height: isMobile ? 40 : 50,
+                          fit: BoxFit.contain,
+                          // Optional fallback if image fails to load
+                          errorBuilder: (context, error, stackTrace) => 
+                            const Icon(Icons.stars, color: Color(0xFFD4AF37), size: 28),
+                        ),
                         const SizedBox(width: 12),
                         Text(
                           "EMAS JUVITA", 
@@ -270,55 +278,54 @@ class MainNavigationWrapperState extends State<MainNavigationWrapper> {
   }
 
   // --- RESPONSIVE FOOTER ---
-  Widget _buildFooter(bool isMobile) {
-    return Container(
-      width: double.infinity,
-      color: Colors.black,
-      padding: EdgeInsets.symmetric(vertical: 60, horizontal: isMobile ? 24 : 40),
-      child: Center(
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: 1100), 
-          child: Column(
-            children: [
-              // Wrap with Wrap or Column based on screen size
-              isMobile 
-              ? Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _footerBrandSection(),
-                    const SizedBox(height: 40),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _footerLinksSection(),
-                        _footerContactSection(),
-                      ],
-                    ),
-                  ],
-                )
-              : Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(flex: 2, child: _footerBrandSection()),
-                    Expanded(child: _footerLinksSection()),
-                    Expanded(child: _footerContactSection()),
-                  ],
+Widget _buildFooter(bool isMobile) {
+  return Container(
+    width: double.infinity,
+    color: Colors.black,
+    padding: EdgeInsets.symmetric(vertical: 60, horizontal: isMobile ? 24 : 40),
+    child: Center(
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 1100), 
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start, // Align everything to the left
+          children: [
+            Wrap(
+              spacing: 40, // Horizontal space between items
+              runSpacing: 40, // Vertical space between items when they stack
+              alignment: WrapAlignment.spaceBetween,
+              children: [
+                // Brand Section
+                SizedBox(
+                  width: isMobile ? double.infinity : 300,
+                  child: _footerBrandSection(),
                 ),
-              const SizedBox(height: 60),
-              const Divider(color: Colors.white12),
-              const SizedBox(height: 20),
-              Text(
-                "© 2026 EMAS JUVITA. All rights reserved.",
-                style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 12),
-              ),
-            ],
-          ),
+                
+                // Quick Links
+                SizedBox(
+                  width: 150, // Fixed width helps the wrap decide when to stack
+                  child: _footerLinksSection(),
+                ),
+                
+                // Contact Section
+                SizedBox(
+                  width: 200,
+                  child: _footerContactSection(),
+                ),
+              ],
+            ),
+            const SizedBox(height: 60),
+            const Divider(color: Colors.white12),
+            const SizedBox(height: 20),
+            Text(
+              "© 2026 EMAS JUVITA. All rights reserved.",
+              style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 12),
+            ),
+          ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _footerBrandSection() {
     return Column(
@@ -389,7 +396,6 @@ class _HeroSectionState extends State<HeroSection> {
   final PageController _pageController = PageController();
   int _currentIndex = 0;
   late Timer _timer;
-  // --- NEW: Variable to persist the future ---
   late Future<double> _priceFuture;
 
   final List<String> _sliderImages = [
@@ -408,14 +414,13 @@ class _HeroSectionState extends State<HeroSection> {
       return (response['price_per_gram'] as num).toDouble();
     } catch (e) {
       debugPrint("Error fetching price: $e");
-      return 0.0; // Fallback value
+      return 0.0;
     }
   }
 
   @override
   void initState() {
     super.initState();
-    // --- UPDATED: Initialize the future once here ---
     _priceFuture = _getLivePrice();
 
     _timer = Timer.periodic(const Duration(seconds: 5), (Timer timer) {
@@ -426,7 +431,8 @@ class _HeroSectionState extends State<HeroSection> {
       }
       if (_pageController.hasClients) {
         _pageController.animateToPage(_currentIndex,
-            duration: const Duration(milliseconds: 800), curve: Curves.fastOutSlowIn);
+            duration: const Duration(milliseconds: 800),
+            curve: Curves.fastOutSlowIn);
       }
     });
   }
@@ -440,83 +446,97 @@ class _HeroSectionState extends State<HeroSection> {
 
   @override
   Widget build(BuildContext context) {
+    double screenWidth = MediaQuery.of(context).size.width;
+    // Responsive slider height: shrinks as width shrinks
+    double sliderHeight = screenWidth > 900 ? 600 : screenWidth * 0.6;
+
     return Column(
       children: [
-        // 1. DYNAMIC SLIDER
+        // 1. DYNAMIC SLIDER (Responsive)
         SizedBox(
-          height: 600,
-          width: MediaQuery.of(context).size.width,
+          height: sliderHeight,
+          width: screenWidth,
           child: Stack(
             children: [
               PageView.builder(
                 controller: _pageController,
                 itemCount: _sliderImages.length,
                 onPageChanged: (index) => setState(() => _currentIndex = index),
-                itemBuilder: (context, index) => _buildSlide(_sliderImages[index], "EXCLUSIVE COLLECTION"),
+                itemBuilder: (context, index) =>
+                    _buildSlide(_sliderImages[index], ""),
               ),
-              _sliderArrow(Icons.arrow_back_ios, () => _pageController.previousPage(duration: const Duration(milliseconds: 400), curve: Curves.easeInOut), left: 20),
-              _sliderArrow(Icons.arrow_forward_ios, () => _pageController.nextPage(duration: const Duration(milliseconds: 400), curve: Curves.easeInOut), right: 20),
+              _sliderArrow(
+                  Icons.arrow_back_ios,
+                  () => _pageController.previousPage(
+                      duration: const Duration(milliseconds: 400),
+                      curve: Curves.easeInOut),
+                  left: 20),
+              _sliderArrow(
+                  Icons.arrow_forward_ios,
+                  () => _pageController.nextPage(
+                      duration: const Duration(milliseconds: 400),
+                      curve: Curves.easeInOut),
+                  right: 20),
             ],
           ),
         ),
-        
+
         const SizedBox(height: 60),
 
-        // --- UPDATED: LIVE PRICE SECTION (Uses persisted future) ---
+        // LIVE PRICE SECTION
         FutureBuilder<double>(
-          future: _priceFuture, // Changed from _getLivePrice() to the variable
+          future: _priceFuture,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator(color: Color(0xFFD4AF37)));
+              return const Center(
+                  child: CircularProgressIndicator(color: Color(0xFFD4AF37)));
             }
             return _buildPriceCardWithButton(context, snapshot.data ?? 0.00);
           },
         ),
-        
+
         const SizedBox(height: 60),
         _buildStoryBox(context),
-        
+
         const SizedBox(height: 80),
 
-        // 4. OUR PRESENCE (Responsive Wrap)
-        const Text(
-          "OUR PRESENCE", 
-          style: TextStyle(color: Color(0xFFD4AF37), fontSize: 24, letterSpacing: 4, fontWeight: FontWeight.bold)
-        ),
+        // 4. OUR PRESENCE
+        const Text("OUR PRESENCE",
+            style: TextStyle(
+                color: Color(0xFFD4AF37),
+                fontSize: 24,
+                letterSpacing: 4,
+                fontWeight: FontWeight.bold)),
         const SizedBox(height: 30),
 
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Center(
             child: Wrap(
-              spacing: 20, 
-              runSpacing: 30, 
-              alignment: WrapAlignment.center, 
+              spacing: 20,
+              runSpacing: 30,
+              alignment: WrapAlignment.center,
               children: [
                 _buildPresenceCard(
-                  "Kedai Emas Juvita HQ", 
-                  "45, Jalan Flora Utama 5, Batu Pahat", 
-                  "https://ovapdygzriiojovtnngq.supabase.co/storage/v1/object/public/Images/Kedai%20Emas%20Juvita%20HQ.png",
-                  "https://maps.google.com" 
-                ),
+                    "Kedai Emas Juvita HQ",
+                    "45, Jalan Flora Utama 5, Batu Pahat",
+                    "https://ovapdygzriiojovtnngq.supabase.co/storage/v1/object/public/Images/Kedai%20Emas%20Juvita%20HQ.png",
+                    "https://maps.google.com"),
                 _buildPresenceCard(
-                  "Kedai Emas Juvita Penggaram", 
-                  "34, Jalan Penggaram, Batu Pahat", 
-                  "https://ovapdygzriiojovtnngq.supabase.co/storage/v1/object/public/Images/Kedai%20Emas%20Juvita%20Penggaram.png",
-                  "https://maps.google.com" 
-                ),
+                    "Kedai Emas Juvita Penggaram",
+                    "34, Jalan Penggaram, Batu Pahat",
+                    "https://ovapdygzriiojovtnngq.supabase.co/storage/v1/object/public/Images/Kedai%20Emas%20Juvita%20Penggaram.png",
+                    "https://maps.google.com"),
                 _buildPresenceCard(
-                  "Kedai Emas Juvita Parit Sulong", 
-                  "88, Jalan Besar, Parit Sulong", 
-                  "https://ovapdygzriiojovtnngq.supabase.co/storage/v1/object/public/Images/Kedai%20Emas%20Juvita%20Parit%20Sulong.png",
-                  "https://maps.google.com" 
-                ),
+                    "Kedai Emas Juvita Parit Sulong",
+                    "88, Jalan Besar, Parit Sulong",
+                    "https://ovapdygzriiojovtnngq.supabase.co/storage/v1/object/public/Images/Kedai%20Emas%20Juvita%20Parit%20Sulong.png",
+                    "https://maps.google.com"),
                 _buildPresenceCard(
-                  "Kedai Emas Juvita Parit Raja", 
-                  "23, Jalan Perdagangan 2, Parit Raja", 
-                  "https://ovapdygzriiojovtnngq.supabase.co/storage/v1/object/public/Images/Kedai%20Emas%20Juvita%20Parit%20Raja.png",
-                  "https://maps.google.com" 
-                ),
+                    "Kedai Emas Juvita Parit Raja",
+                    "23, Jalan Perdagangan 2, Parit Raja",
+                    "https://ovapdygzriiojovtnngq.supabase.co/storage/v1/object/public/Images/Kedai%20Emas%20Juvita%20Parit%20Raja.png",
+                    "https://maps.google.com"),
               ],
             ),
           ),
@@ -524,7 +544,7 @@ class _HeroSectionState extends State<HeroSection> {
 
         const SizedBox(height: 100),
 
-        // 5. Investment vs Jewellery Section
+        // 5. Investment vs Jewellery Section (Stacked Layout)
         _buildInvestmentSection(context),
 
         const SizedBox(height: 100),
@@ -532,74 +552,100 @@ class _HeroSectionState extends State<HeroSection> {
     );
   }
 
-  // --- REST OF ORIGINAL METHODS (Unaltered) ---
-
   Widget _buildInvestmentSection(BuildContext context) {
     return Column(
       children: [
-        const Text(
-          "Investment vs Jewellery: Why 916 & 999 Matter",
-          textAlign: TextAlign.center,
-          style: TextStyle(color: Color(0xFFD4AF37), fontSize: 28, letterSpacing: 2, fontWeight: FontWeight.bold),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 20),
+          child: Text(
+            "Investment vs Jewellery: Why 916 & 999 Matter",
+            textAlign: TextAlign.center,
+            style: TextStyle(
+                color: Color(0xFFD4AF37),
+                fontSize: 28,
+                letterSpacing: 2,
+                fontWeight: FontWeight.bold),
+          ),
         ),
         const SizedBox(height: 50),
-        
-        _buildHorizontalInvestmentBox(
+        _buildVerticalInvestmentBox(
           context,
-          imageUrl: "https://ovapdygzriiojovtnngq.supabase.co/storage/v1/object/public/Images/916%20img.png", 
+          imageUrl:
+              "https://ovapdygzriiojovtnngq.supabase.co/storage/v1/object/public/Images/916%20img.png",
           title: "916 GOLD (22K) – For Ornate Jewellery",
-          description: "Durable and beautiful, perfect for intricate designs to be worn daily. The standard for traditional elegance. Ideal for wedding sets and daily wear.",
+          description:
+              "Durable and beautiful, perfect for intricate designs to be worn daily. The standard for traditional elegance. Ideal for wedding sets and daily wear.",
           buttonText: "Shop 916 Collections",
         ),
-
         const SizedBox(height: 30),
-
-        _buildHorizontalInvestmentBox(
+        _buildVerticalInvestmentBox(
           context,
-          imageUrl: "https://ovapdygzriiojovtnngq.supabase.co/storage/v1/object/public/Images/999%20img.png", 
+          imageUrl:
+              "https://ovapdygzriiojovtnngq.supabase.co/storage/v1/object/public/Images/999%20img.png",
           title: "999 GOLD (24K) – For Pure Investment",
-          description: "The highest purity, for maximal wealth preservation and investment. Unalloyed for lasting value. Ideal for gold savings and investment portfolio diversification.",
+          description:
+              "The highest purity, for maximal wealth preservation and investment. Unalloyed for lasting value. Ideal for gold savings and investment portfolio diversification.",
           buttonText: "Shop 999 Collections",
         ),
       ],
     );
   }
 
-  Widget _buildHorizontalInvestmentBox(BuildContext context, {required String imageUrl, required String title, required String description, required String buttonText}) {
+  Widget _buildVerticalInvestmentBox(BuildContext context,
+      {required String imageUrl,
+      required String title,
+      required String description,
+      required String buttonText}) {
+    bool isSmall = MediaQuery.of(context).size.width < 800;
+
     return Container(
       width: double.infinity,
-      constraints: const BoxConstraints(maxWidth: 1200),
-      margin: const EdgeInsets.symmetric(horizontal: 50),
-      padding: const EdgeInsets.all(30),
+      constraints: const BoxConstraints(maxWidth: 800),
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: const Color(0xFF2A0000),
-        border: Border.all(color: const Color(0xFFD4AF37).withOpacity(0.6), width: 1),
+        border: Border.all(
+            color: const Color(0xFFD4AF37).withOpacity(0.6), width: 1),
         borderRadius: BorderRadius.circular(15),
       ),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: Image.network(imageUrl, width: 220, height: 220, fit: BoxFit.cover),
+          Image.network(
+            imageUrl,
+            width: double.infinity,
+            height: isSmall ? 250 : 400,
+            fit: BoxFit.cover,
           ),
-          const SizedBox(width: 40),
-          Expanded(
+          Padding(
+            padding: const EdgeInsets.all(30),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(color: Color(0xFFD4AF37), fontSize: 22, fontWeight: FontWeight.bold)),
+                Text(title,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                        color: Color(0xFFD4AF37),
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold)),
                 const SizedBox(height: 15),
-                Text(description, style: const TextStyle(color: Colors.white70, fontSize: 16, height: 1.6)),
+                Text(description,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                        color: Colors.white70, fontSize: 16, height: 1.6)),
                 const SizedBox(height: 25),
                 ElevatedButton(
-                  onPressed: () => context.findAncestorStateOfType<MainNavigationWrapperState>()?._navigateTo(1),
+                  onPressed: () => context
+                      .findAncestorStateOfType<MainNavigationWrapperState>()
+                      ?._navigateTo(1),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFD4AF37),
                     foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 18),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 40, vertical: 18),
                   ),
-                  child: Text(buttonText.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold)),
+                  child: Text(buttonText.toUpperCase(),
+                      style: const TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
@@ -609,7 +655,8 @@ class _HeroSectionState extends State<HeroSection> {
     );
   }
 
-  Widget _buildPresenceCard(String name, String address, String imageUrl, String mapUrl) {
+  Widget _buildPresenceCard(
+      String name, String address, String imageUrl, String mapUrl) {
     return Container(
       width: 320,
       height: 600,
@@ -622,24 +669,33 @@ class _HeroSectionState extends State<HeroSection> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-            child: Image.network(imageUrl, height: 350, width: 320, fit: BoxFit.cover),
+            borderRadius:
+                const BorderRadius.vertical(top: Radius.circular(12)),
+            child: Image.network(imageUrl,
+                height: 350, width: 320, fit: BoxFit.cover),
           ),
           Expanded(
             child: Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween, 
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(name.toUpperCase(), 
-                        style: const TextStyle(color: Color(0xFFD4AF37), fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1)),
+                      Text(name.toUpperCase(),
+                          style: const TextStyle(
+                              color: Color(0xFFD4AF37),
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1)),
                       const SizedBox(height: 8),
-                      Text(address, 
-                        style: const TextStyle(color: Colors.white60, fontSize: 12, height: 1.4)),
+                      Text(address,
+                          style: const TextStyle(
+                              color: Colors.white60,
+                              fontSize: 12,
+                              height: 1.4)),
                     ],
                   ),
                   SizedBox(
@@ -647,10 +703,10 @@ class _HeroSectionState extends State<HeroSection> {
                     child: OutlinedButton(
                       onPressed: () => _launchURL(mapUrl),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFFD4AF37), 
-                        side: const BorderSide(color: Color(0xFFD4AF37))
-                      ),
-                      child: const Text("VIEW ON MAP", style: TextStyle(fontSize: 12)),
+                          foregroundColor: const Color(0xFFD4AF37),
+                          side: const BorderSide(color: Color(0xFFD4AF37))),
+                      child: const Text("VIEW ON MAP",
+                          style: TextStyle(fontSize: 12)),
                     ),
                   )
                 ],
@@ -672,9 +728,15 @@ class _HeroSectionState extends State<HeroSection> {
       ),
       child: Column(
         children: [
-          const Text("TODAY'S 916 PRICE", style: TextStyle(color: Color(0xFFD4AF37), fontSize: 14, letterSpacing: 2)),
+          const Text("TODAY'S 916 PRICE",
+              style: TextStyle(
+                  color: Color(0xFFD4AF37), fontSize: 14, letterSpacing: 2)),
           const SizedBox(height: 10),
-          Text("RM ${price.toStringAsFixed(2)}/g", style: const TextStyle(color: Colors.white, fontSize: 40, fontWeight: FontWeight.bold)),
+          Text("RM ${price.toStringAsFixed(2)}/g",
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 40,
+                  fontWeight: FontWeight.bold)),
           const SizedBox(height: 25),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -682,8 +744,12 @@ class _HeroSectionState extends State<HeroSection> {
               foregroundColor: Colors.black,
               padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
             ),
-            onPressed: () => context.findAncestorStateOfType<MainNavigationWrapperState>()?._navigateTo(2),
-            child: const Text("CHECK FULL PRICE LIST", style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1)),
+            onPressed: () => context
+                .findAncestorStateOfType<MainNavigationWrapperState>()
+                ?._navigateTo(2),
+            child: const Text("CHECK FULL PRICE LIST",
+                style:
+                    TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1)),
           ),
         ],
       ),
@@ -697,30 +763,36 @@ class _HeroSectionState extends State<HeroSection> {
         constraints: const BoxConstraints(maxWidth: 900),
         padding: const EdgeInsets.all(50),
         decoration: BoxDecoration(
-          color: const Color(0xFF2A0000), 
-          border: Border.all(color: const Color(0xFFD4AF37), width: 1), 
-          borderRadius: BorderRadius.circular(15)
-        ),
+            color: const Color(0xFF2A0000),
+            border: Border.all(color: const Color(0xFFD4AF37), width: 1),
+            borderRadius: BorderRadius.circular(15)),
         child: Column(
           children: [
-            const Text("CRAFTING TRUST IN BATU PAHAT", 
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Color(0xFFD4AF37), letterSpacing: 3, fontWeight: FontWeight.bold, fontSize: 26)),
+            const Text("CRAFTING TRUST IN BATU PAHAT",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    color: Color(0xFFD4AF37),
+                    letterSpacing: 3,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 26)),
             const SizedBox(height: 25),
             const Text(
-              "What began in the heart of Batu Pahat has blossomed into a legacy of excellence, now spanning four branches to better serve our community with premium gold and unmatched service.", 
-              textAlign: TextAlign.center, 
-              style: TextStyle(color: Colors.white70, fontSize: 18, height: 1.8)
-            ),
+                "What began in the heart of Batu Pahat has blossomed into a legacy of excellence, now spanning four branches to better serve our community with premium gold and unmatched service.",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    color: Colors.white70, fontSize: 18, height: 1.8)),
             const SizedBox(height: 35),
             ElevatedButton(
-              onPressed: () => context.findAncestorStateOfType<MainNavigationWrapperState>()?._navigateTo(3),
+              onPressed: () => context
+                  .findAncestorStateOfType<MainNavigationWrapperState>()
+                  ?._navigateTo(3),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFD4AF37), 
-                foregroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 20)
-              ),
-              child: const Text("LEARN OUR STORY", style: TextStyle(fontWeight: FontWeight.bold)),
+                  backgroundColor: const Color(0xFFD4AF37),
+                  foregroundColor: Colors.black,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 50, vertical: 20)),
+              child: const Text("LEARN OUR STORY",
+                  style: TextStyle(fontWeight: FontWeight.bold)),
             ),
           ],
         ),
@@ -734,13 +806,28 @@ class _HeroSectionState extends State<HeroSection> {
       children: [
         Image.network(imageUrl, fit: BoxFit.cover),
         Container(color: Colors.black.withOpacity(0.4)),
-        Center(child: Text(title, style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.w900, letterSpacing: 8))),
+        Center(
+            child: Text(title,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 36,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 8))),
       ],
     );
   }
 
-  Widget _sliderArrow(IconData icon, VoidCallback onTap, {double? left, double? right}) {
-    return Positioned(left: left, right: right, top: 0, bottom: 0, child: Center(child: IconButton(icon: Icon(icon, color: const Color(0xFFD4AF37), size: 35), onPressed: onTap)));
+  Widget _sliderArrow(IconData icon, VoidCallback onTap,
+      {double? left, double? right}) {
+    return Positioned(
+        left: left,
+        right: right,
+        top: 0,
+        bottom: 0,
+        child: Center(
+            child: IconButton(
+                icon: Icon(icon, color: const Color(0xFFD4AF37), size: 35),
+                onPressed: onTap)));
   }
 
 }
@@ -755,8 +842,6 @@ class ShopPage extends StatefulWidget {
 
 class _ShopPageState extends State<ShopPage> {
   String _selectedCategory = '916 GOLD';
-  
-  // Get the Supabase client instance
   final supabase = Supabase.instance.client;
 
   @override
@@ -766,7 +851,11 @@ class _ShopPageState extends State<ShopPage> {
       child: Column(
         children: [
           const Text("COLLECTIONS",
-              style: TextStyle(color: Color(0xFFD4AF37), fontSize: 24, letterSpacing: 4, fontWeight: FontWeight.bold)),
+              style: TextStyle(
+                  color: Color(0xFFD4AF37),
+                  fontSize: 24,
+                  letterSpacing: 4,
+                  fontWeight: FontWeight.bold)),
           const SizedBox(height: 30),
 
           // CATEGORY SELECTOR
@@ -774,32 +863,37 @@ class _ShopPageState extends State<ShopPage> {
 
           const SizedBox(height: 40),
 
-          // DYNAMIC PRODUCT GRID FROM SUPABASE
+          // DYNAMIC RESPONSIVE PRODUCT GRID
           FutureBuilder<List<Product>>(
-            // Query Supabase based on the selected category
-            future: _fetchProducts(), 
+            future: _fetchProducts(),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator(color: Color(0xFFD4AF37)));
+                return const Center(
+                    child: CircularProgressIndicator(color: Color(0xFFD4AF37)));
               }
-              
+
               if (snapshot.hasError) {
-                return Center(child: Text("Error: ${snapshot.error}", style: const TextStyle(color: Colors.white)));
+                return Center(
+                    child: Text("Error: ${snapshot.error}",
+                        style: const TextStyle(color: Colors.white)));
               }
 
               final products = snapshot.data ?? [];
 
               if (products.isEmpty) {
-                return const Center(child: Text("No products found in this category.", style: TextStyle(color: Colors.white60)));
+                return const Center(
+                    child: Text("No products found in this category.",
+                        style: TextStyle(color: Colors.white60)));
               }
 
               return GridView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 4,
-                  childAspectRatio: 0.75,
-                  crossAxisSpacing: 10,
+                // --- UPDATED FOR RESPONSIVENESS ---
+                gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                  maxCrossAxisExtent: 250, // Each card will be at most 250px wide
+                  childAspectRatio: 0.7,   // Adjusted for a bit more vertical space
+                  crossAxisSpacing: 15,
                   mainAxisSpacing: 15,
                 ),
                 itemCount: products.length,
@@ -814,23 +908,21 @@ class _ShopPageState extends State<ShopPage> {
     );
   }
 
-  // --- DATABASE LOGIC ---
-Future<List<Product>> _fetchProducts() async {
-  try {
-    final response = await supabase
-        .from('products')
-        .select('*, market_prices(price_per_gram)') // No extra spaces inside quotes
-        .eq('category', _selectedCategory);
+  Future<List<Product>> _fetchProducts() async {
+    try {
+      final response = await supabase
+          .from('products')
+          .select('*, market_prices(price_per_gram)')
+          .eq('category', _selectedCategory);
 
-    final List data = response as List;
-    return data.map((item) => Product.fromMap(item)).toList();
-  } catch (e) {
-    print("Error fetching: $e");
-    return [];
+      final List data = response as List;
+      return data.map((item) => Product.fromMap(item)).toList();
+    } catch (e) {
+      debugPrint("Error fetching: $e");
+      return [];
+    }
   }
-}
 
-  // --- UI COMPONENTS ---
   Widget _buildCategoryDropdown() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -843,8 +935,11 @@ Future<List<Product>> _fetchProducts() async {
           value: _selectedCategory,
           dropdownColor: const Color(0xFF1A0000),
           icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFFD4AF37)),
-          style: const TextStyle(color: Color(0xFFD4AF37), fontWeight: FontWeight.bold),
-          items: ['916 GOLD', '999 GOLD'].map((val) => DropdownMenuItem(value: val, child: Text(val))).toList(),
+          style: const TextStyle(
+              color: Color(0xFFD4AF37), fontWeight: FontWeight.bold),
+          items: ['916 GOLD', '999 GOLD']
+              .map((val) => DropdownMenuItem(value: val, child: Text(val)))
+              .toList(),
           onChanged: (val) {
             setState(() => _selectedCategory = val!);
           },
@@ -861,50 +956,60 @@ Future<List<Product>> _fetchProducts() async {
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
-            flex: 5,
             child: ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(8)),
               child: Image.network(
-                product.imageUrl, 
-                width: double.infinity, 
+                product.imageUrl,
+                width: double.infinity,
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image, color: Colors.grey),
+                errorBuilder: (context, error, stackTrace) =>
+                    const Icon(Icons.broken_image, color: Colors.grey),
               ),
             ),
           ),
           Padding(
-            padding: const EdgeInsets.all(8.0),
+            padding: const EdgeInsets.all(12.0),
             child: Column(
               children: [
                 Text(product.name,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
-                    maxLines: 1,
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold),
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 4),
+                const SizedBox(height: 6),
                 Text("RM ${product.marketPrice.toStringAsFixed(2)}/g",
-                    style: const TextStyle(color: Color(0xFFD4AF37), fontSize: 10)),
-                const SizedBox(height: 8),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFD4AF37),
-                    minimumSize: const Size(double.infinity, 28),
-                    padding: EdgeInsets.zero,
+                    style: const TextStyle(
+                        color: Color(0xFFD4AF37), fontSize: 12)),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFD4AF37),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              ProductDetailsPage(product: product),
+                        ),
+                      );
+                    },
+                    child: const Text("VIEW",
+                        style: TextStyle(
+                            color: Colors.black,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold)),
                   ),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => ProductDetailsPage(product: product),
-                      ),
-                    );
-                  },
-                  child: const Text("VIEW",
-                      style: TextStyle(color: Colors.black, fontSize: 10, fontWeight: FontWeight.bold)),
                 )
               ],
             ),
@@ -915,14 +1020,13 @@ Future<List<Product>> _fetchProducts() async {
   }
 }
 
-// --- UPDATED DATA MODEL WITH FROMMAP ---
 class Product {
   final String name;
   final String description;
   final String category;
   final double labourFee;
   final String imageUrl;
-  final double marketPrice; // Still here, but filled from the joined table
+  final double marketPrice;
 
   Product({
     required this.name,
@@ -933,33 +1037,29 @@ class Product {
     required this.marketPrice,
   });
 
-factory Product.fromMap(Map<String, dynamic> map) {
-  // Extract the price data
-  final priceData = map['market_prices'];
-  double fetchedPrice = 0.0;
+  factory Product.fromMap(Map<String, dynamic> map) {
+    final priceData = map['market_prices'];
+    double fetchedPrice = 0.0;
 
-  if (priceData != null) {
-    if (priceData is List && priceData.isNotEmpty) {
-      // If it's a list, take the first one
-      fetchedPrice = (priceData[0]['price_per_gram'] as num).toDouble();
-    } else if (priceData is Map) {
-      // If it's a single map
-      fetchedPrice = (priceData['price_per_gram'] as num).toDouble();
+    if (priceData != null) {
+      if (priceData is List && priceData.isNotEmpty) {
+        fetchedPrice = (priceData[0]['price_per_gram'] as num).toDouble();
+      } else if (priceData is Map) {
+        fetchedPrice = (priceData['price_per_gram'] as num).toDouble();
+      }
     }
+
+    return Product(
+      name: map['name'] ?? '',
+      description: map['description'] ?? '',
+      category: map['category'] ?? '',
+      labourFee: (map['labour_fee'] as num?)?.toDouble() ?? 0.0,
+      imageUrl: map['image_url'] ?? '',
+      marketPrice: fetchedPrice,
+    );
   }
-
-  return Product(
-    name: map['name'] ?? '',
-    description: map['description'] ?? '',
-    category: map['category'] ?? '',
-    labourFee: (map['labour_fee'] as num?)?.toDouble() ?? 0.0,
-    imageUrl: map['image_url'] ?? '',
-    marketPrice: fetchedPrice,
-  );
-}
 }
 
-// --- DYNAMIC PRODUCT DETAILS PAGE ---
 class ProductDetailsPage extends StatefulWidget {
   final Product product;
   const ProductDetailsPage({super.key, required this.product});
@@ -969,131 +1069,162 @@ class ProductDetailsPage extends StatefulWidget {
 }
 
 class _ProductDetailsPageState extends State<ProductDetailsPage> {
-  double _selectedWeight = 10.0; // Default variation
+  double _selectedWeight = 10.0;
 
   double _calculateTotal() {
-    return (widget.product.marketPrice * _selectedWeight) + widget.product.labourFee;
+    return (widget.product.marketPrice * _selectedWeight) +
+        widget.product.labourFee;
   }
 
   @override
   Widget build(BuildContext context) {
+    // Check screen size for responsiveness
+    double screenWidth = MediaQuery.of(context).size.width;
+    bool isMobile = screenWidth < 600;
+
     return Scaffold(
       backgroundColor: const Color(0xFF1A0000),
       appBar: AppBar(
         title: Text(widget.product.name),
-        // IMPROVED CONTRAST: Gold text and icons on dark red background
-        backgroundColor: const Color(0xFF4A0000), 
-        foregroundColor: const Color(0xFFD4AF37), 
+        backgroundColor: const Color(0xFF4A0000),
+        foregroundColor: const Color(0xFFD4AF37),
         elevation: 0,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(30),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // IMPROVED IMAGE AREA: Not full width, better fitting
-            Center(
-              child: Container(
-                height: 300,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF2A0000), // Slightly lighter frame
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(15),
-                  child: Image.network(
-                    widget.product.imageUrl, 
-                    fit: BoxFit.contain, // Ensures the whole product is visible
+        padding: EdgeInsets.all(isMobile ? 20 : 40),
+        child: Center(
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 1000),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    height: isMobile ? 250 : 400,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2A0000),
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(15),
+                      child: Image.network(
+                        widget.product.imageUrl,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
-            const SizedBox(height: 30),
-            
-            // Header Info
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(widget.product.category, 
-                  style: const TextStyle(color: Color(0xFFD4AF37), letterSpacing: 2, fontWeight: FontWeight.w600)),
-                Text("Market: RM ${widget.product.marketPrice}/g", 
-                  style: const TextStyle(color: Colors.white60, fontSize: 14)),
+                const SizedBox(height: 30),
+
+                // Header Info
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(widget.product.category,
+                        style: const TextStyle(
+                            color: Color(0xFFD4AF37),
+                            letterSpacing: 2,
+                            fontWeight: FontWeight.w600)),
+                    Text("Market: RM ${widget.product.marketPrice}/g",
+                        style: const TextStyle(
+                            color: Colors.white60, fontSize: 14)),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text(widget.product.name,
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: isMobile ? 22 : 28,
+                        fontWeight: FontWeight.bold)),
+
+                const SizedBox(height: 30),
+                const Text("SELECT WEIGHT VARIATION (GRAMS)",
+                    style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold)),
+                const SizedBox(height: 15),
+
+                // Variation Buttons - Wrap ensures they don't overflow on tiny screens
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [10.0, 30.0, 50.0].map((weight) {
+                    bool isSelected = _selectedWeight == weight;
+                    return OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        backgroundColor: isSelected
+                            ? const Color(0xFFD4AF37)
+                            : Colors.transparent,
+                        side: const BorderSide(color: Color(0xFFD4AF37)),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 25, vertical: 15),
+                      ),
+                      onPressed: () => setState(() => _selectedWeight = weight),
+                      child: Text("${weight.toInt()}g",
+                          style: TextStyle(
+                              color: isSelected ? Colors.black : Colors.white,
+                              fontWeight: FontWeight.bold)),
+                    );
+                  }).toList(),
+                ),
+
+                const SizedBox(height: 40),
+
+                // Price Breakdown Box
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                      color: const Color(0xFF2A0000),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                          color: const Color(0xFFD4AF37).withOpacity(0.5))),
+                  child: Column(
+                    children: [
+                      _priceRow(
+                          "Gold Value (${_selectedWeight}g x RM ${widget.product.marketPrice})",
+                          "RM ${(widget.product.marketPrice * _selectedWeight).toStringAsFixed(2)}"),
+                      const SizedBox(height: 10),
+                      _priceRow("Labour Fee",
+                          "RM ${widget.product.labourFee.toStringAsFixed(2)}"),
+                      const Divider(color: Color(0xFFD4AF37), height: 30),
+                      _priceRow(
+                          "ESTIMATED TOTAL",
+                          "RM ${_calculateTotal().toStringAsFixed(2)}",
+                          isTotal: true),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 30),
+                const Text("DESCRIPTION",
+                    style: TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 10),
+                Text(widget.product.description,
+                    style: const TextStyle(
+                        color: Colors.white70, fontSize: 16, height: 1.6)),
+
+                const SizedBox(height: 50),
+
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFD4AF37),
+                      padding: const EdgeInsets.all(20),
+                    ),
+                    onPressed: () {},
+                    child: const Text("INQUIRE VIA WHATSAPP",
+                        style: TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16)),
+                  ),
+                ),
               ],
             ),
-            const SizedBox(height: 10),
-            Text(widget.product.name, 
-              style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
-            
-            const SizedBox(height: 30),
-            const Text("SELECT WEIGHT VARIATION (GRAMS)", 
-              style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 15),
-
-            // Variation Buttons
-            Row(
-              children: [10.0, 30.0, 50.0].map((weight) {
-                bool isSelected = _selectedWeight == weight;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 12),
-                  child: OutlinedButton(
-                    style: OutlinedButton.styleFrom(
-                      backgroundColor: isSelected ? const Color(0xFFD4AF37) : Colors.transparent,
-                      side: const BorderSide(color: Color(0xFFD4AF37)),
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-                    ),
-                    onPressed: () => setState(() => _selectedWeight = weight),
-                    child: Text("${weight.toInt()}g", 
-                      style: TextStyle(color: isSelected ? Colors.black : Colors.white, fontWeight: FontWeight.bold)),
-                  ),
-                );
-              }).toList(),
-            ),
-
-            const SizedBox(height: 40),
-
-            // Price Breakdown Box
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: const Color(0xFF2A0000),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFFD4AF37).withOpacity(0.5))
-              ),
-              child: Column(
-                children: [
-                  _priceRow("Gold Value (${_selectedWeight}g x RM ${widget.product.marketPrice})", 
-                            "RM ${(widget.product.marketPrice * _selectedWeight).toStringAsFixed(2)}"),
-                  const SizedBox(height: 10),
-                  _priceRow("Labour Fee", "RM ${widget.product.labourFee.toStringAsFixed(2)}"),
-                  const Divider(color: Color(0xFFD4AF37), height: 30),
-                  _priceRow("ESTIMATED TOTAL", "RM ${_calculateTotal().toStringAsFixed(2)}", isTotal: true),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 30),
-            const Text("DESCRIPTION", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 10),
-            Text(widget.product.description, style: const TextStyle(color: Colors.white70, fontSize: 16, height: 1.6)),
-            
-            const SizedBox(height: 50),
-            
-            // Call to Action
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFD4AF37), 
-                  padding: const EdgeInsets.all(20),
-                ),
-                onPressed: () {
-                  // Assuming _launchWhatsApp is defined elsewhere
-                },
-                child: const Text("INQUIRE VIA WHATSAPP", 
-                  style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 16)),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -1103,14 +1234,18 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: TextStyle(
-          color: isTotal ? Colors.white : Colors.white60, 
-          fontSize: isTotal ? 16 : 14, 
-          fontWeight: isTotal ? FontWeight.bold : FontWeight.normal)),
-        Text(value, style: TextStyle(
-          color: const Color(0xFFD4AF37), 
-          fontSize: isTotal ? 20 : 14, 
-          fontWeight: FontWeight.bold)),
+        Expanded(
+          child: Text(label,
+              style: TextStyle(
+                  color: isTotal ? Colors.white : Colors.white60,
+                  fontSize: isTotal ? 16 : 14,
+                  fontWeight: isTotal ? FontWeight.bold : FontWeight.normal)),
+        ),
+        Text(value,
+            style: TextStyle(
+                color: const Color(0xFFD4AF37),
+                fontSize: isTotal ? 20 : 14,
+                fontWeight: FontWeight.bold)),
       ],
     );
   }
@@ -1127,14 +1262,18 @@ class LivePricePage extends StatefulWidget {
 class _LivePricePageState extends State<LivePricePage> {
   final supabase = Supabase.instance.client;
 
-  // We create a stream that listens to the market_prices table
   final Stream<List<Map<String, dynamic>>> _priceStream = Supabase.instance.client
       .from('market_prices')
       .stream(primaryKey: ['category'])
-      .order('category', ascending: false); // Usually puts 999 at the top
+      .order('category', ascending: false);
 
   @override
   Widget build(BuildContext context) {
+    // --- RESPONSIVE CHECK ---
+    double screenWidth = MediaQuery.of(context).size.width;
+    // We increase this threshold to 450 to be safer against wrapping
+    bool isSmallScreen = screenWidth < 450; 
+
     return Container(
       width: double.infinity,
       color: const Color(0xFF1A0000),
@@ -1149,14 +1288,17 @@ class _LivePricePageState extends State<LivePricePage> {
             return const Center(child: Text("Error loading prices", style: TextStyle(color: Colors.white)));
           }
 
-          // Extracting data from the stream
           final prices = snapshot.data!;
           
-          // Helper to find specific prices from the list
           double getPrice(String cat) => 
             (prices.firstWhere((e) => e['category'] == cat, orElse: () => {'price_per_gram': 0.0})['price_per_gram'] as num).toDouble();
 
-          // Get the latest 'last_updated' timestamp from the rows
+          // --- FIXED FORMATTING LOGIC ---
+          // This forces decimals to disappear on smaller screens so they don't wrap
+          String formatPrice(double price) {
+            return isSmallScreen ? "RM${price.floor()}" : "RM${price.toStringAsFixed(2)}";
+          }
+
           String rawTime = prices.firstWhere((e) => e['category'] == '916 GOLD')['last_updated'];
           String formattedTime = DateFormat('MMMM dd, yyyy h:mm a').format(DateTime.parse(rawTime).toLocal());
 
@@ -1182,20 +1324,33 @@ class _LivePricePageState extends State<LivePricePage> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  Text(
-                    "RM${gold916.toStringAsFixed(2)}",
-                    style: const TextStyle(
-                      color: Color(0xFFD4AF37),
-                      fontSize: 80,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: -2,
+                  
+                  // --- FIXED BIG NUMBER ---
+                  // FittedBox ensures that if the text is STILL too wide, it shrinks 
+                  // the font size instead of dropping the decimals to a new line.
+                  SizedBox(
+                    width: screenWidth * 0.9, 
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        formatPrice(gold916), 
+                        style: TextStyle(
+                          color: const Color(0xFFD4AF37),
+                          fontSize: isSmallScreen ? 70 : 100, 
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: -2,
+                        ),
+                      ),
                     ),
                   ),
+                  
                   Text(
                     "Last Updated: $formattedTime",
                     style: const TextStyle(color: Colors.white54, fontSize: 12),
+                    textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 60),
+                  
                   Container(
                     constraints: const BoxConstraints(maxWidth: 600),
                     decoration: BoxDecoration(
@@ -1208,21 +1363,22 @@ class _LivePricePageState extends State<LivePricePage> {
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(15),
                       child: Table(
+                        // columnWidths are set to give the price column only as much space as it needs
                         columnWidths: const {
-                          0: FlexColumnWidth(2),
-                          1: FlexColumnWidth(1),
+                          0: FlexColumnWidth(3),
+                          1: IntrinsicColumnWidth(), 
                         },
+                        defaultVerticalAlignment: TableCellVerticalAlignment.middle,
                         children: [
                           _tableHeader("GOLD TYPE", "PRICE (PER GRAM)"),
-                          _tableRow("Gold 999 (24k)", "RM${gold999.toStringAsFixed(2)}"),
-                          _tableRow("Gold 916 (22k)", "RM${gold916.toStringAsFixed(2)}", isHighlighted: true),
-                          _tableRow("Gold 750 (18k)", "RM${gold750.toStringAsFixed(2)}"),
+                          _tableRow("Gold 999 (24k)", formatPrice(gold999)),
+                          _tableRow("Gold 916 (22k)", formatPrice(gold916), isHighlighted: true),
+                          _tableRow("Gold 750 (18k)", formatPrice(gold750)),
                         ],
                       ),
                     ),
                   ),
                   const SizedBox(height: 40),
-                  // This button now updates the REAL database
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFD4AF37)),
                     onPressed: () async {
@@ -1242,7 +1398,6 @@ class _LivePricePageState extends State<LivePricePage> {
     );
   }
 
-  // Your existing TableRow helper methods (_tableHeader and _tableRow) stay exactly the same...
   TableRow _tableHeader(String c1, String c2) {
     return TableRow(
       decoration: const BoxDecoration(color: Color(0xFFFAF9F6)),
@@ -1254,14 +1409,27 @@ class _LivePricePageState extends State<LivePricePage> {
   }
 
   TableRow _tableRow(String label, String price, {bool isHighlighted = false}) {
+    bool isSmall = MediaQuery.of(context).size.width < 450;
     return TableRow(
       decoration: BoxDecoration(
         color: isHighlighted ? const Color(0xFFFFFBEA) : Colors.white,
         border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
       ),
       children: [
-        Padding(padding: const EdgeInsets.all(22), child: Text(label, style: const TextStyle(color: Color(0xFF444444), fontSize: 15, fontWeight: FontWeight.w500))),
-        Padding(padding: const EdgeInsets.all(22), child: Text(price, style: const TextStyle(color: Color(0xFF444444), fontSize: 15, fontWeight: FontWeight.bold), textAlign: TextAlign.right)),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: isSmall ? 12 : 22, vertical: 18), 
+          child: Text(label, style: const TextStyle(color: Color(0xFF444444), fontSize: 14, fontWeight: FontWeight.w500))
+        ),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: isSmall ? 12 : 22, vertical: 18),
+          child: Text(price, 
+            style: const TextStyle(color: Color(0xFF444444), fontSize: 15, fontWeight: FontWeight.bold, 
+            // This prevents wrapping in the table row
+            overflow: TextOverflow.visible), 
+            textAlign: TextAlign.right,
+            maxLines: 1,
+          )
+        ),
       ],
     );
   }
@@ -1273,22 +1441,38 @@ class AboutPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Determine if we are on a smaller screen (Mobile/Tablet)
+    double screenWidth = MediaQuery.of(context).size.width;
+    bool isMobile = screenWidth < 900; // Standard threshold for stacking layout
+
     return SingleChildScrollView(
       child: Column(
         children: [
           // --- SECTION 1: MORE THAN JUST GOLD ---
           Container(
-            color: const Color(0xFF4A0E0E), // Match the dark maroon background
-            padding: const EdgeInsets.symmetric(vertical: 80, horizontal: 100),
-            child: Row(
+            color: const Color(0xFF4A0E0E),
+            padding: EdgeInsets.symmetric(
+              vertical: isMobile ? 40 : 80, 
+              horizontal: isMobile ? 20 : 100,
+            ),
+            child: Flex(
+              direction: isMobile ? Axis.vertical : Axis.horizontal,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // Left Column: Text Content
+                // If mobile, show image at the TOP
+                if (isMobile) ...[
+                  _buildImageSection('https://ovapdygzriiojovtnngq.supabase.co/storage/v1/object/public/Images/About%20img1.png', isMobile),
+                  const SizedBox(height: 40),
+                ],
+
+                // Text Content
                 Expanded(
-                  flex: 3,
+                  flex: isMobile ? 0 : 3,
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment: isMobile ? CrossAxisAlignment.center : CrossAxisAlignment.start,
                     children: [
                       RichText(
+                        textAlign: isMobile ? TextAlign.center : TextAlign.left,
                         text: const TextSpan(
                           style: TextStyle(fontSize: 32, fontFamily: 'Serif', color: Colors.white),
                           children: [
@@ -1297,76 +1481,61 @@ class AboutPage extends StatelessWidget {
                           ],
                         ),
                       ),
-                      const SizedBox(height: 40),
-                      const Text(
+                      const SizedBox(height: 30),
+                      Text(
                         "Emas Juvita was founded on a simple belief: that fine jewelry should not just be a luxury, but a meaningful milestone accessible to everyone in our community. Based in the heart of Batu Pahat, we have spent years building a reputation centered on transparency, integrity, and exquisite craftsmanship.",
-                        style: TextStyle(color: Colors.white70, fontSize: 16, height: 1.6),
+                        style: const TextStyle(color: Colors.white70, fontSize: 16, height: 1.6),
+                        textAlign: isMobile ? TextAlign.center : TextAlign.left,
                       ),
                       const SizedBox(height: 20),
-                      const Text(
+                      Text(
                         "We specialize in premium 916 and 999 gold, ensuring that every piece you take home is a lasting investment in quality. To us, you aren’t just a customer; we treat every transaction as a long-term partnership built on trust.",
-                        style: TextStyle(color: Colors.white70, fontSize: 16, height: 1.6),
+                        style: const TextStyle(color: Colors.white70, fontSize: 16, height: 1.6),
+                        textAlign: isMobile ? TextAlign.center : TextAlign.left,
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(width: 60),
-                // Right Column: Image Placeholder
-                Expanded(
-                  flex: 2,
-                  child: Container(
-                    height: 600,
-                    decoration: BoxDecoration(
-                      color: Colors.white10,
-                      borderRadius: BorderRadius.circular(20),
-                      image: const DecorationImage(
-                       image: NetworkImage('https://ovapdygzriiojovtnngq.supabase.co/storage/v1/object/public/Images/About%20img1.png'),
-                       fit: BoxFit.cover,
-                     ),
-                     ),
-                  ),
-                ),
+
+                // If Desktop, show image on the RIGHT
+                if (!isMobile) ...[
+                  const SizedBox(width: 60),
+                  _buildImageSection('https://ovapdygzriiojovtnngq.supabase.co/storage/v1/object/public/Images/About%20img1.png', isMobile),
+                ],
               ],
             ),
           ),
 
           // --- SECTION 2: THE JUVITA STANDARDS ---
           Container(
-            color: Colors.black, // Match the black background
-            padding: const EdgeInsets.symmetric(vertical: 80, horizontal: 100),
-            child: Row(
+            color: Colors.black,
+            padding: EdgeInsets.symmetric(
+              vertical: isMobile ? 40 : 80, 
+              horizontal: isMobile ? 20 : 100,
+            ),
+            child: Flex(
+              direction: isMobile ? Axis.vertical : Axis.horizontal,
               children: [
-                // Left Column: Image Placeholder
+                // Image on TOP for mobile
+                _buildImageSection('https://ovapdygzriiojovtnngq.supabase.co/storage/v1/object/public/Images/About%20img2.png', isMobile),
+                
+                SizedBox(height: isMobile ? 40 : 0, width: isMobile ? 0 : 60),
+
+                // Standards Content
                 Expanded(
-                  flex: 2,
-                  child: Container(
-                    height: 400,
-                    decoration: BoxDecoration(
-                      color: Colors.white10,
-                      borderRadius: BorderRadius.circular(20),
-                    image: const DecorationImage(
-                       image: NetworkImage('https://ovapdygzriiojovtnngq.supabase.co/storage/v1/object/public/Images/About%20img2.png'),
-                       fit: BoxFit.cover,
-                     ),
-                     ),
-                  ),
-                ),
-                const SizedBox(width: 60),
-                // Right Column: Standards Content
-                Expanded(
-                  flex: 3,
+                  flex: isMobile ? 0 : 3,
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment: isMobile ? CrossAxisAlignment.center : CrossAxisAlignment.start,
                     children: [
                       const Text(
                         "The Juvita Standards",
                         style: TextStyle(fontSize: 32, fontFamily: 'Serif', color: Colors.white),
                       ),
                       const SizedBox(height: 40),
-                      _buildStandardItem("Transparent Pricing", "We offer competitive workmanship rates with no hidden surprises."),
-                      _buildStandardItem("Quality Guaranteed", "Every item in our catalog is strictly vetted for purity and authenticity."),
-                      _buildStandardItem("Customer-First Service", "From free professional cleaning to high-value buy-backs, we support you long after your initial purchase."),
-                      _buildStandardItem("Flexible Savings", "We provide accessible gold saving plans (STE) to help you grow your wealth at your own pace."),
+                      _buildStandardItem("Transparent Pricing", "We offer competitive workmanship rates with no hidden surprises.", isMobile),
+                      _buildStandardItem("Quality Guaranteed", "Every item in our catalog is strictly vetted for purity and authenticity.", isMobile),
+                      _buildStandardItem("Customer-First Service", "From free professional cleaning to high-value buy-backs, we support you long after your initial purchase.", isMobile),
+                      _buildStandardItem("Flexible Savings", "We provide accessible gold saving plans (STE) to help you grow your wealth at your own pace.", isMobile),
                     ],
                   ),
                 ),
@@ -1378,14 +1547,34 @@ class AboutPage extends StatelessWidget {
     );
   }
 
-  // Helper widget for standard bullet points
-  Widget _buildStandardItem(String title, String description) {
+  // Extracted image builder for cleaner code
+  Widget _buildImageSection(String url, bool isMobile) {
+    return Expanded(
+      flex: isMobile ? 0 : 2,
+      child: Container(
+        height: isMobile ? 300 : 500, // Shorter height on mobile
+        width: isMobile ? double.infinity : null,
+        decoration: BoxDecoration(
+          color: Colors.white10,
+          borderRadius: BorderRadius.circular(20),
+          image: DecorationImage(
+            image: NetworkImage(url),
+            fit: BoxFit.cover,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Updated helper with alignment logic
+  Widget _buildStandardItem(String title, String description, bool isMobile) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 25),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: isMobile ? CrossAxisAlignment.center : CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: isMobile ? MainAxisAlignment.center : MainAxisAlignment.start,
             children: [
               const Icon(Icons.circle, size: 6, color: Colors.white),
               const SizedBox(width: 10),
@@ -1394,8 +1583,12 @@ class AboutPage extends StatelessWidget {
           ),
           const SizedBox(height: 5),
           Padding(
-            padding: const EdgeInsets.only(left: 16),
-            child: Text(description, style: const TextStyle(color: Colors.white70, fontSize: 14)),
+            padding: EdgeInsets.only(left: isMobile ? 0 : 16),
+            child: Text(
+              description, 
+              style: const TextStyle(color: Colors.white70, fontSize: 14),
+              textAlign: isMobile ? TextAlign.center : TextAlign.left,
+            ),
           ),
         ],
       ),
@@ -1415,7 +1608,6 @@ class _ContactPageState extends State<ContactPage> {
   @override
   void initState() {
     super.initState();
-    // Registering specific embed links for your Batu Pahat locations
     _registerMap("hq-map", "https://maps.google.com/maps?q=Jalan%20Flora%20Utama%205%20Batu%20Pahat&t=&z=15&ie=UTF8&iwloc=&output=embed");
     _registerMap("penggaram-map", "https://maps.google.com/maps?q=Jalan%20Penggaram%20Batu%20Pahat&t=&z=15&ie=UTF8&iwloc=&output=embed");
     _registerMap("raja-map", "https://maps.google.com/maps?q=Parit%20Raja%20Batu%20Pahat&t=&z=15&ie=UTF8&iwloc=&output=embed");
@@ -1433,7 +1625,6 @@ class _ContactPageState extends State<ContactPage> {
     );
   }
 
-  // Helper function to launch external maps
   Future<void> _launchUrl(String url) async {
     final Uri uri = Uri.parse(url);
     if (!await launchUrl(uri)) {
@@ -1443,31 +1634,43 @@ class _ContactPageState extends State<ContactPage> {
 
   @override
   Widget build(BuildContext context) {
+    double screenWidth = MediaQuery.of(context).size.width;
+    bool isMobile = screenWidth < 800; // Threshold for mobile/tablet
+
     return Container(
       width: double.infinity,
       color: const Color(0xFF1A0000), 
       child: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(vertical: 80, horizontal: 100),
+        // Reduce padding on mobile so cards don't get squished
+        padding: EdgeInsets.symmetric(
+          vertical: isMobile ? 40 : 80, 
+          horizontal: isMobile ? 20 : 100
+        ),
         child: Column(
           children: [
-            const Text(
+            Text(
               "VISIT OUR LOCATIONS",
+              textAlign: TextAlign.center,
               style: TextStyle(
-                color: Color(0xFFD4AF37), 
-                fontSize: 32, 
+                color: const Color(0xFFD4AF37), 
+                fontSize: isMobile ? 24 : 32, 
                 fontWeight: FontWeight.bold, 
                 fontFamily: 'Serif'
               ),
             ),
             const SizedBox(height: 60),
 
-            GridView.count(
+            // Using MaxCrossAxisExtent to handle responsive columns
+            GridView(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 2,
-              crossAxisSpacing: 30,
-              mainAxisSpacing: 30,
-              childAspectRatio: 1.05, 
+              gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: 600, // Cards will be max 600px wide
+                crossAxisSpacing: 30,
+                mainAxisSpacing: 30,
+                // Adjust aspect ratio for mobile vs desktop
+                childAspectRatio: isMobile ? 0.85 : 1.05, 
+              ),
               children: [
                 _buildMapCard(
                   "Kedai Emas Juvita HQ", 
@@ -1502,6 +1705,8 @@ class _ContactPageState extends State<ContactPage> {
   }
 
   Widget _buildMapCard(String title, String address, String mapId, String googleMapsUrl) {  
+    bool isMobile = MediaQuery.of(context).size.width < 800;
+
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xFF2D0A0A), 
@@ -1515,15 +1720,15 @@ class _ContactPageState extends State<ContactPage> {
           )
         ],
       ),
-      padding: const EdgeInsets.all(25),
+      padding: EdgeInsets.all(isMobile ? 15 : 25),
       child: Column(
         children: [
           Text(
             title, 
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               color: Colors.white, 
-              fontSize: 22, 
+              fontSize: isMobile ? 18 : 22, 
               fontFamily: 'Serif',
               fontWeight: FontWeight.w600,
             )
@@ -1553,9 +1758,9 @@ class _ContactPageState extends State<ContactPage> {
                 Expanded(
                   child: Text(
                     address,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.white, 
-                      fontSize: 16,        
+                      fontSize: isMobile ? 14 : 16,        
                       fontWeight: FontWeight.bold, 
                       height: 1.4,
                     ),
