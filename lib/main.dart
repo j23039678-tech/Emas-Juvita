@@ -51,100 +51,168 @@ class MainNavigationWrapperState extends State<MainNavigationWrapper> {
   void initState() {
     super.initState();
     
-    // 1. Listen to Supabase Auth changes
-    supabase.auth.onAuthStateChange.listen((data) {
-      if (mounted) {
-        setState(() {
-          _isLoggedIn = data.session != null;
-        });
+    supabase.auth.onAuthStateChange.listen((data) async {
+      final session = data.session;
+      if (session != null) {
+        final userId = session.user.id;
+        final profile = await supabase.from('profiles').select('is_approved').eq('id', userId).maybeSingle();
+
+        if (profile == null || profile['is_approved'] != true) {
+          await supabase.auth.signOut(); 
+          if (mounted) {
+            setState(() => _isLoggedIn = false);
+            _navigateTo(0);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("ACCESS DENIED: Awaiting VIP approval."), backgroundColor: Colors.redAccent),
+            );
+          }
+        } else {
+          if (mounted) setState(() => _isLoggedIn = true);
+        }
+      } else {
+        if (mounted) setState(() => _isLoggedIn = false);
       }
     });
 
-    // 2. Show your Promo Poster after 2 seconds
     Future.delayed(const Duration(seconds: 2), () {
       if (mounted) _showPromoPoster(context); 
     });
   }
 
-
   void _navigateTo(int index) {
     setState(() => _currentPageIndex = index);
     if (_scrollController.hasClients) {
-      _scrollController.animateTo(0, duration: const Duration(milliseconds: 300), curve: Curves.easeIn);
+      _scrollController.animateTo(0, 
+        duration: const Duration(milliseconds: 300), 
+        curve: Curves.easeIn
+      );
     }
   }
 
-  // --- DYNAMIC AUTH ACTION ---
   Future<void> _handleAuthAction() async {
     if (_isLoggedIn) {
       await supabase.auth.signOut();
-      _navigateTo(0); // Redirect home on logout
+      _navigateTo(0); 
     } else {
-      _navigateTo(6); // Redirect to Login Choice Page
+      _navigateTo(6); 
     }
+  }
+
+  // --- MOBILE DRAWER ITEM HELPER ---
+  Widget _drawerItem(IconData icon, String title, int index) {
+    return ListTile(
+      leading: Icon(icon, color: const Color(0xFFD4AF37)),
+      title: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
+      onTap: () {
+        Navigator.pop(context); // Close drawer
+        _navigateTo(index);
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final bool isMobile = MediaQuery.of(context).size.width < 900;
+
     return Scaffold(
+      backgroundColor: const Color(0xFF1A0000),
+      
+      // --- DRAWER (Mobile Only) ---
+      drawer: isMobile ? Drawer(
+        backgroundColor: const Color(0xFF1A0000),
+        child: Column(
+          children: [
+            DrawerHeader(
+              decoration: const BoxDecoration(color: Color(0xFF800000)),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: const [
+                    Icon(Icons.stars, color: Color(0xFFD4AF37), size: 40),
+                    SizedBox(height: 10),
+                    Text("EMAS JUVITA", style: TextStyle(color: Color(0xFFD4AF37), fontSize: 18, letterSpacing: 2, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ),
+            ),
+            _drawerItem(Icons.home, "HOME", 0),
+            _drawerItem(Icons.shopping_bag, "SHOP", 1),
+            _drawerItem(Icons.trending_up, "LIVE PRICE", 2),
+            _drawerItem(Icons.info, "ABOUT", 3),
+            _drawerItem(Icons.contact_mail, "CONTACT", 4),
+            _drawerItem(Icons.link, "LINKS", 5),
+            const Spacer(),
+            const Divider(color: Colors.white12),
+            ListTile(
+              leading: Icon(_isLoggedIn ? Icons.logout : Icons.login, color: const Color(0xFFD4AF37)),
+              title: Text(_isLoggedIn ? "LOGOUT" : "LOGIN", style: const TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(context);
+                _handleAuthAction();
+              },
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ) : null,
+
       appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(100), 
+        preferredSize: const Size.fromHeight(100),
         child: Container(
-          decoration: const BoxDecoration(
-            color: Color(0xFF800000), // Original Maroon
-            border: Border(bottom: BorderSide(color: Color(0xFFD4AF37), width: 1)),
-          ),
+          color: const Color(0xFF800000),
           child: SafeArea(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 40),
+              padding: EdgeInsets.symmetric(horizontal: isMobile ? 15 : 40, vertical: 10),
               child: Row(
                 children: [
-                  // --- ICON + STORE NAME ---
-                  Row(
-                    children: [
-                      const Icon(Icons.stars, color: Color(0xFFD4AF37), size: 32),
-                      const SizedBox(width: 12),
-                      const Text(
-                        "EMAS JUVITA", 
-                        style: TextStyle(
-                          color: Color(0xFFD4AF37), 
-                          fontSize: 24, 
-                          letterSpacing: 3, 
-                          fontWeight: FontWeight.bold
-                        )
-                      ),
-                    ],
-                  ),
-                  
-                  const Spacer(),
-
-                  // --- NAV BUTTONS ---
-                  _navButton("HOME", 0),
-                  _navButton("SHOP", 1),
-                  _navButton("LIVE PRICE", 2),
-                  _navButton("ABOUT", 3),
-                  _navButton("CONTACT", 4),
-                  _navButton("LINKS", 5),
-                  
-                  const SizedBox(width: 20),
-                  
-                  // --- DYNAMIC LOGIN/LOGOUT BUTTON ---
-                  InkWell(
-                    onTap: _handleAuthAction,
-                    child: Container(
-                      height: 45,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFD4AF37),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      alignment: Alignment.center,
-                      child: Text(
-                        _isLoggedIn ? "LOGOUT" : "LOGIN", 
-                        style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)
+                  if (isMobile)
+                    Builder(
+                      builder: (context) => IconButton(
+                        icon: const Icon(Icons.menu, color: Color(0xFFD4AF37)),
+                        onPressed: () => Scaffold.of(context).openDrawer(),
                       ),
                     ),
+                  
+                  InkWell(
+                    onTap: () => _navigateTo(0),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.stars, color: Color(0xFFD4AF37), size: 28),
+                        const SizedBox(width: 12),
+                        Text(
+                          "EMAS JUVITA", 
+                          style: TextStyle(
+                            color: const Color(0xFFD4AF37), 
+                            fontSize: isMobile ? 18 : 22, 
+                            letterSpacing: 2, 
+                            fontWeight: FontWeight.bold
+                          )
+                        ),
+                      ],
+                    ),
                   ),
+                  const Spacer(),
+                  
+                  // Desktop Navigation
+                  if (!isMobile) ...[
+                    _navButton("HOME", 0),
+                    _navButton("SHOP", 1),
+                    _navButton("LIVE PRICE", 2),
+                    _navButton("ABOUT", 3),
+                    _navButton("CONTACT", 4),
+                    _navButton("LINKS", 5),
+                    const SizedBox(width: 30),
+                    ElevatedButton(
+                      onPressed: _handleAuthAction,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFD4AF37),
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      child: Text(_isLoggedIn ? "LOGOUT" : "LOGIN", style: const TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -156,44 +224,157 @@ class MainNavigationWrapperState extends State<MainNavigationWrapper> {
         child: Column(
           children: [
             _getPage(_currentPageIndex),
-            // const FooterSection(),
+            _buildFooter(isMobile), // Updated Footer
           ],
         ),
       ),
     );
   }
 
+  Widget _getPage(int index) {
+    final String? userEmail = supabase.auth.currentUser?.email;
+    bool isAdmin = _isLoggedIn && userEmail == 'admin@email.com';
+
+    switch (index) {
+      case 0: return const HeroSection();
+      case 1: return const ShopPage();
+      case 2: return const LivePricePage();
+      case 3: return const AboutPage();
+      case 4: return const ContactPage();
+      case 5: return const LinktreePage();
+      case 6: 
+        if (!_isLoggedIn) return const AuthPage();
+        if (isAdmin) return const AdminApprovalPage();
+        return const HeroSection(); 
+      default: return const HeroSection();
+    }
+  }
+
   Widget _navButton(String title, int index) {
     bool isSelected = _currentPageIndex == index;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 8),
       child: TextButton(
         onPressed: () => _navigateTo(index),
+        style: TextButton.styleFrom(overlayColor: Colors.transparent),
         child: Text(
           title, 
           style: TextStyle(
-            color: isSelected ? Colors.white : const Color(0xFFD4AF37), 
+            color: isSelected ? Colors.white : const Color(0xFFD4AF37).withOpacity(0.8), 
             fontSize: 13, 
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w400,
           )
         ),
       ),
     );
   }
 
-Widget _getPage(int index) {
-  switch (index) {
-    case 0: return const HeroSection();
-    case 1: return const ShopPage();
-    case 2: return const LivePricePage();
-    case 3: return const AboutPage();
-    case 4: return const ContactPage();
-    case 5: return const LinktreePage();
-    case 6: 
-      return _isLoggedIn ? const AdminApprovalPage() : const AuthPage();
-    default: return const HeroSection();
+  // --- RESPONSIVE FOOTER ---
+  Widget _buildFooter(bool isMobile) {
+    return Container(
+      width: double.infinity,
+      color: Colors.black,
+      padding: EdgeInsets.symmetric(vertical: 60, horizontal: isMobile ? 24 : 40),
+      child: Center(
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 1100), 
+          child: Column(
+            children: [
+              // Wrap with Wrap or Column based on screen size
+              isMobile 
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _footerBrandSection(),
+                    const SizedBox(height: 40),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _footerLinksSection(),
+                        _footerContactSection(),
+                      ],
+                    ),
+                  ],
+                )
+              : Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(flex: 2, child: _footerBrandSection()),
+                    Expanded(child: _footerLinksSection()),
+                    Expanded(child: _footerContactSection()),
+                  ],
+                ),
+              const SizedBox(height: 60),
+              const Divider(color: Colors.white12),
+              const SizedBox(height: 20),
+              Text(
+                "© 2026 EMAS JUVITA. All rights reserved.",
+                style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _footerBrandSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text("EMAS JUVITA", style: TextStyle(color: Color(0xFFD4AF37), fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 2)),
+        const SizedBox(height: 15),
+        Text("Trusted Gold Trading and Investment.", 
+          style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 14, height: 1.5)),
+      ],
+    );
+  }
+
+  Widget _footerLinksSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text("QUICK LINKS", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+        const SizedBox(height: 20),
+        _footerLink("Home", 0),
+        _footerLink("Shop", 1),
+        _footerLink("Live Prices", 2),
+      ],
+    );
+  }
+
+  Widget _footerContactSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text("CONTACT", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+        const SizedBox(height: 20),
+        Text("support@emasjuvita.com", style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 14)),
+        const SizedBox(height: 10),
+        Text("+60 12-345 6789", style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 14)),
+      ],
+    );
+  }
+
+  Widget _footerLink(String title, int index) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12.0),
+      child: InkWell(
+        onTap: () => _navigateTo(index),
+        child: Text(title, style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 14)),
+      ),
+    );
   }
 }
+
+// --- UTILITY ---
+double getResponsivePadding(BuildContext context) {
+  double width = MediaQuery.of(context).size.width;
+  if (width < 600) return 24.0; 
+  if (width < 1200) return 50.0;
+  return 100.0;
 }
 
 // --- PAGE 1: HOMEPAGE ---
@@ -208,6 +389,8 @@ class _HeroSectionState extends State<HeroSection> {
   final PageController _pageController = PageController();
   int _currentIndex = 0;
   late Timer _timer;
+  // --- NEW: Variable to persist the future ---
+  late Future<double> _priceFuture;
 
   final List<String> _sliderImages = [
     "https://ovapdygzriiojovtnngq.supabase.co/storage/v1/object/public/Images/slider%201.png",
@@ -215,9 +398,26 @@ class _HeroSectionState extends State<HeroSection> {
     "https://ovapdygzriiojovtnngq.supabase.co/storage/v1/object/public/Images/slider%203.png",
   ];
 
+  Future<double> _getLivePrice() async {
+    try {
+      final response = await Supabase.instance.client
+          .from('market_prices')
+          .select('price_per_gram')
+          .eq('category', '916 GOLD')
+          .single();
+      return (response['price_per_gram'] as num).toDouble();
+    } catch (e) {
+      debugPrint("Error fetching price: $e");
+      return 0.0; // Fallback value
+    }
+  }
+
   @override
   void initState() {
     super.initState();
+    // --- UPDATED: Initialize the future once here ---
+    _priceFuture = _getLivePrice();
+
     _timer = Timer.periodic(const Duration(seconds: 5), (Timer timer) {
       if (_currentIndex < _sliderImages.length - 1) {
         _currentIndex++;
@@ -261,7 +461,17 @@ class _HeroSectionState extends State<HeroSection> {
         ),
         
         const SizedBox(height: 60),
-        _buildPriceCardWithButton(context, 385.50),
+
+        // --- UPDATED: LIVE PRICE SECTION (Uses persisted future) ---
+        FutureBuilder<double>(
+          future: _priceFuture, // Changed from _getLivePrice() to the variable
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator(color: Color(0xFFD4AF37)));
+            }
+            return _buildPriceCardWithButton(context, snapshot.data ?? 0.00);
+          },
+        ),
         
         const SizedBox(height: 60),
         _buildStoryBox(context),
@@ -277,36 +487,38 @@ class _HeroSectionState extends State<HeroSection> {
 
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Wrap(
-            spacing: 20, 
-            runSpacing: 30, 
-            alignment: WrapAlignment.center, 
-            children: [
-              _buildPresenceCard(
-                "Kedai Emas Juvita HQ", 
-                "45, Jalan Flora Utama 5, Batu Pahat", 
-                "https://ovapdygzriiojovtnngq.supabase.co/storage/v1/object/public/Images/Kedai%20Emas%20Juvita%20HQ.png",
-                "https://maps.app.goo.gl/RucVvWeum682AVAeA" // REPLACE WITH REAL LINK
-              ),
-              _buildPresenceCard(
-                "Kedai Emas Juvita Penggaram", 
-                "34, Jalan Penggaram, Batu Pahat", 
-                "https://ovapdygzriiojovtnngq.supabase.co/storage/v1/object/public/Images/Kedai%20Emas%20Juvita%20Penggaram.png",
-                "https://maps.app.goo.gl/PBYAKuTSL7JYQaoq6" // REPLACE WITH REAL LINK
-              ),
-              _buildPresenceCard(
-                "Kedai Emas Juvita Parit Sulong", 
-                "88, Jalan Besar, Parit Sulong", 
-                "https://ovapdygzriiojovtnngq.supabase.co/storage/v1/object/public/Images/Kedai%20Emas%20Juvita%20Parit%20Sulong.png",
-                "https://maps.app.goo.gl/2oUp8N9DdXA4WvCD7" // REPLACE WITH REAL LINK
-              ),
-              _buildPresenceCard(
-                "Kedai Emas Juvita Parit Raja", 
-                "23, Jalan Perdagangan 2, Parit Raja", 
-                "https://ovapdygzriiojovtnngq.supabase.co/storage/v1/object/public/Images/Kedai%20Emas%20Juvita%20Parit%20Raja.png",
-                "https://maps.app.goo.gl/BdSLE3BGj8VVrzRw5" // REPLACE WITH REAL LINK
-              ),
-            ],
+          child: Center(
+            child: Wrap(
+              spacing: 20, 
+              runSpacing: 30, 
+              alignment: WrapAlignment.center, 
+              children: [
+                _buildPresenceCard(
+                  "Kedai Emas Juvita HQ", 
+                  "45, Jalan Flora Utama 5, Batu Pahat", 
+                  "https://ovapdygzriiojovtnngq.supabase.co/storage/v1/object/public/Images/Kedai%20Emas%20Juvita%20HQ.png",
+                  "https://maps.google.com" 
+                ),
+                _buildPresenceCard(
+                  "Kedai Emas Juvita Penggaram", 
+                  "34, Jalan Penggaram, Batu Pahat", 
+                  "https://ovapdygzriiojovtnngq.supabase.co/storage/v1/object/public/Images/Kedai%20Emas%20Juvita%20Penggaram.png",
+                  "https://maps.google.com" 
+                ),
+                _buildPresenceCard(
+                  "Kedai Emas Juvita Parit Sulong", 
+                  "88, Jalan Besar, Parit Sulong", 
+                  "https://ovapdygzriiojovtnngq.supabase.co/storage/v1/object/public/Images/Kedai%20Emas%20Juvita%20Parit%20Sulong.png",
+                  "https://maps.google.com" 
+                ),
+                _buildPresenceCard(
+                  "Kedai Emas Juvita Parit Raja", 
+                  "23, Jalan Perdagangan 2, Parit Raja", 
+                  "https://ovapdygzriiojovtnngq.supabase.co/storage/v1/object/public/Images/Kedai%20Emas%20Juvita%20Parit%20Raja.png",
+                  "https://maps.google.com" 
+                ),
+              ],
+            ),
           ),
         ),
 
@@ -319,6 +531,8 @@ class _HeroSectionState extends State<HeroSection> {
       ],
     );
   }
+
+  // --- REST OF ORIGINAL METHODS (Unaltered) ---
 
   Widget _buildInvestmentSection(BuildContext context) {
     return Column(
@@ -397,7 +611,8 @@ class _HeroSectionState extends State<HeroSection> {
 
   Widget _buildPresenceCard(String name, String address, String imageUrl, String mapUrl) {
     return Container(
-      width: 320, 
+      width: 320,
+      height: 600,
       decoration: BoxDecoration(
         color: const Color(0xFF2A0000),
         border: Border.all(color: const Color(0xFFD4AF37).withOpacity(0.4)),
@@ -410,24 +625,36 @@ class _HeroSectionState extends State<HeroSection> {
             borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
             child: Image.network(imageUrl, height: 350, width: 320, fit: BoxFit.cover),
           ),
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(name.toUpperCase(), style: const TextStyle(color: Color(0xFFD4AF37), fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1)),
-                const SizedBox(height: 8),
-                Text(address, style: const TextStyle(color: Colors.white60, fontSize: 12, height: 1.4)),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton(
-                    onPressed: () => _launchURL(mapUrl),
-                    style: OutlinedButton.styleFrom(foregroundColor: const Color(0xFFD4AF37), side: const BorderSide(color: Color(0xFFD4AF37))),
-                    child: const Text("VIEW ON MAP", style: TextStyle(fontSize: 12)),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween, 
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(name.toUpperCase(), 
+                        style: const TextStyle(color: Color(0xFFD4AF37), fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1)),
+                      const SizedBox(height: 8),
+                      Text(address, 
+                        style: const TextStyle(color: Colors.white60, fontSize: 12, height: 1.4)),
+                    ],
                   ),
-                )
-              ],
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: () => _launchURL(mapUrl),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFFD4AF37), 
+                        side: const BorderSide(color: Color(0xFFD4AF37))
+                      ),
+                      child: const Text("VIEW ON MAP", style: TextStyle(fontSize: 12)),
+                    ),
+                  )
+                ],
+              ),
             ),
           ),
         ],
@@ -515,6 +742,7 @@ class _HeroSectionState extends State<HeroSection> {
   Widget _sliderArrow(IconData icon, VoidCallback onTap, {double? left, double? right}) {
     return Positioned(left: left, right: right, top: 0, bottom: 0, child: Center(child: IconButton(icon: Icon(icon, color: const Color(0xFFD4AF37), size: 35), onPressed: onTap)));
   }
+
 }
 
 // --- PAGE 2: SHOP PAGE ---
@@ -527,52 +755,12 @@ class ShopPage extends StatefulWidget {
 
 class _ShopPageState extends State<ShopPage> {
   String _selectedCategory = '916 GOLD';
-
-  // --- 1. DEFINE INDIVIDUAL 916 PRODUCTS HERE ---
-  final List<Product> _products916 = [
-    Product(
-      name: "916 Gold Bracelet Series #1",
-      marketPrice: 385.00,
-      labourFee: 150.0,
-      description: "A premium 916 gold piece crafted with precision and traditional elegance.",
-      category: "916 GOLD",
-      imageUrl: "https://ovapdygzriiojovtnngq.supabase.co/storage/v1/object/public/Images/Gold%20Bracelet.png",
-    ),
-    Product(
-      name: "916 Gold Necklace Series #2",
-      marketPrice: 385.00,
-      labourFee: 120.0,
-      description: "Elegant 916 gold bracelet featuring intricate floral patterns.",
-      category: "916 GOLD",
-      imageUrl: "https://ovapdygzriiojovtnngq.supabase.co/storage/v1/object/public/Images/Gold%20Necklace.png", // Replace with actual image URL
-    ),
-    Product(
-      name: "916 Gold Ring Series #3",
-      marketPrice: 385.00,
-      labourFee: 80.0,
-      description: "Classic 916 gold ring, perfect for daily wear and traditional sets.",
-      category: "916 GOLD",
-      imageUrl: "https://ovapdygzriiojovtnngq.supabase.co/storage/v1/object/public/Images/Gold%20Rings.png", // Replace with actual image URL
-    ),
-  ];
-
-  // --- 2. DEFINE INDIVIDUAL 999 PRODUCTS HERE ---
-  final List<Product> _products999 = [
-    Product(
-      name: "999 Investment Bar",
-      marketPrice: 420.00,
-      labourFee: 80.0,
-      description: "Pure 24K gold bar, the ultimate choice for wealth preservation and investment.",
-      category: "999 GOLD",
-      imageUrl: "https://ovapdygzriiojovtnngq.supabase.co/storage/v1/object/public/Images/Gold%20Bars.png",
-    ),
-  ];
+  
+  // Get the Supabase client instance
+  final supabase = Supabase.instance.client;
 
   @override
   Widget build(BuildContext context) {
-    // Determine which list to display
-    List<Product> currentList = (_selectedCategory == '916 GOLD') ? _products916 : _products999;
-
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 15),
       child: Column(
@@ -582,42 +770,85 @@ class _ShopPageState extends State<ShopPage> {
           const SizedBox(height: 30),
 
           // CATEGORY SELECTOR
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              border: Border.all(color: const Color(0xFFD4AF37)),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                value: _selectedCategory,
-                dropdownColor: const Color(0xFF1A0000),
-                icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFFD4AF37)),
-                style: const TextStyle(color: Color(0xFFD4AF37), fontWeight: FontWeight.bold),
-                items: ['916 GOLD', '999 GOLD'].map((val) => DropdownMenuItem(value: val, child: Text(val))).toList(),
-                onChanged: (val) => setState(() => _selectedCategory = val!),
-              ),
-            ),
-          ),
+          _buildCategoryDropdown(),
 
           const SizedBox(height: 40),
 
-          // PRODUCT GRID
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 4,
-              childAspectRatio: 0.75,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 15,
-            ),
-            itemCount: currentList.length,
-            itemBuilder: (context, index) {
-              return _buildProductCard(context, currentList[index]);
+          // DYNAMIC PRODUCT GRID FROM SUPABASE
+          FutureBuilder<List<Product>>(
+            // Query Supabase based on the selected category
+            future: _fetchProducts(), 
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator(color: Color(0xFFD4AF37)));
+              }
+              
+              if (snapshot.hasError) {
+                return Center(child: Text("Error: ${snapshot.error}", style: const TextStyle(color: Colors.white)));
+              }
+
+              final products = snapshot.data ?? [];
+
+              if (products.isEmpty) {
+                return const Center(child: Text("No products found in this category.", style: TextStyle(color: Colors.white60)));
+              }
+
+              return GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 4,
+                  childAspectRatio: 0.75,
+                  crossAxisSpacing: 10,
+                  mainAxisSpacing: 15,
+                ),
+                itemCount: products.length,
+                itemBuilder: (context, index) {
+                  return _buildProductCard(context, products[index]);
+                },
+              );
             },
           ),
         ],
+      ),
+    );
+  }
+
+  // --- DATABASE LOGIC ---
+Future<List<Product>> _fetchProducts() async {
+  try {
+    final response = await supabase
+        .from('products')
+        .select('*, market_prices(price_per_gram)') // No extra spaces inside quotes
+        .eq('category', _selectedCategory);
+
+    final List data = response as List;
+    return data.map((item) => Product.fromMap(item)).toList();
+  } catch (e) {
+    print("Error fetching: $e");
+    return [];
+  }
+}
+
+  // --- UI COMPONENTS ---
+  Widget _buildCategoryDropdown() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        border: Border.all(color: const Color(0xFFD4AF37)),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: _selectedCategory,
+          dropdownColor: const Color(0xFF1A0000),
+          icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFFD4AF37)),
+          style: const TextStyle(color: Color(0xFFD4AF37), fontWeight: FontWeight.bold),
+          items: ['916 GOLD', '999 GOLD'].map((val) => DropdownMenuItem(value: val, child: Text(val))).toList(),
+          onChanged: (val) {
+            setState(() => _selectedCategory = val!);
+          },
+        ),
       ),
     );
   }
@@ -637,7 +868,12 @@ class _ShopPageState extends State<ShopPage> {
             flex: 5,
             child: ClipRRect(
               borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
-              child: Image.network(product.imageUrl, width: double.infinity, fit: BoxFit.cover),
+              child: Image.network(
+                product.imageUrl, 
+                width: double.infinity, 
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image, color: Colors.grey),
+              ),
             ),
           ),
           Padding(
@@ -660,7 +896,6 @@ class _ShopPageState extends State<ShopPage> {
                     padding: EdgeInsets.zero,
                   ),
                   onPressed: () {
-                    // FIXED: Now correctly navigates to details page
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -678,6 +913,50 @@ class _ShopPageState extends State<ShopPage> {
       ),
     );
   }
+}
+
+// --- UPDATED DATA MODEL WITH FROMMAP ---
+class Product {
+  final String name;
+  final String description;
+  final String category;
+  final double labourFee;
+  final String imageUrl;
+  final double marketPrice; // Still here, but filled from the joined table
+
+  Product({
+    required this.name,
+    required this.description,
+    required this.category,
+    required this.labourFee,
+    required this.imageUrl,
+    required this.marketPrice,
+  });
+
+factory Product.fromMap(Map<String, dynamic> map) {
+  // Extract the price data
+  final priceData = map['market_prices'];
+  double fetchedPrice = 0.0;
+
+  if (priceData != null) {
+    if (priceData is List && priceData.isNotEmpty) {
+      // If it's a list, take the first one
+      fetchedPrice = (priceData[0]['price_per_gram'] as num).toDouble();
+    } else if (priceData is Map) {
+      // If it's a single map
+      fetchedPrice = (priceData['price_per_gram'] as num).toDouble();
+    }
+  }
+
+  return Product(
+    name: map['name'] ?? '',
+    description: map['description'] ?? '',
+    category: map['category'] ?? '',
+    labourFee: (map['labour_fee'] as num?)?.toDouble() ?? 0.0,
+    imageUrl: map['image_url'] ?? '',
+    marketPrice: fetchedPrice,
+  );
+}
 }
 
 // --- DYNAMIC PRODUCT DETAILS PAGE ---
@@ -837,25 +1116,6 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
   }
 }
 
-// --- UPDATED DATA MODEL ---
-class Product {
-  final String name;
-  final double marketPrice;
-  final String description;
-  final String category;
-  final double labourFee;
-  final String imageUrl;
-
-  Product({
-    required this.name, 
-    required this.marketPrice, 
-    required this.description, 
-    required this.category,
-    required this.labourFee,
-    required this.imageUrl,
-  });
-}
-
 // --- PAGE 3: LIVE PRICE PAGE ---
 class LivePricePage extends StatefulWidget {
   const LivePricePage({super.key});
@@ -865,105 +1125,124 @@ class LivePricePage extends StatefulWidget {
 }
 
 class _LivePricePageState extends State<LivePricePage> {
-  double gold916Price = 389.00;
-  double gold999Price = 420.00;
-  double gold750Price = 314.00;
-  
-  String lastUpdated = "March 13, 2026 5:53 am";
+  final supabase = Supabase.instance.client;
 
-  void updateGoldPrice(double newPrice) {
-    setState(() {
-      gold916Price = newPrice;
-      lastUpdated = DateFormat('MMMM dd, yyyy h:mm a').format(DateTime.now());
-    });
-  }
+  // We create a stream that listens to the market_prices table
+  final Stream<List<Map<String, dynamic>>> _priceStream = Supabase.instance.client
+      .from('market_prices')
+      .stream(primaryKey: ['category'])
+      .order('category', ascending: false); // Usually puts 999 at the top
 
   @override
   Widget build(BuildContext context) {
-    // REMOVED SCAFFOLD - This prevents the "blank screen" conflict on web
     return Container(
       width: double.infinity,
-      color: const Color(0xFF1A0000), // Background color moved here
-      child: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 60, horizontal: 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // HEADER
-              RichText(
-                textAlign: TextAlign.center,
-                text: const TextSpan(
-                  style: TextStyle(fontSize: 22, color: Colors.white, fontFamily: 'Serif'),
-                  children: [
-                    TextSpan(text: "LIVE "),
-                    TextSpan(text: "GOLD", style: TextStyle(color: Color(0xFFD4AF37), fontWeight: FontWeight.bold)),
-                    TextSpan(text: " PRICE (per gram):"),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
+      color: const Color(0xFF1A0000),
+      child: StreamBuilder<List<Map<String, dynamic>>>(
+        stream: _priceStream,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator(color: Color(0xFFD4AF37)));
+          }
 
-              // CONNECTED BIG PRICE
-              Text(
-                "RM${gold916Price.toStringAsFixed(2)}",
-                style: const TextStyle(
-                  color: Color(0xFFD4AF37),
-                  fontSize: 80,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: -2,
-                ),
-              ),
-              
-              Text(
-                "Last Updated: $lastUpdated",
-                style: const TextStyle(color: Colors.white54, fontSize: 12),
-              ),
+          if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+            return const Center(child: Text("Error loading prices", style: TextStyle(color: Colors.white)));
+          }
 
-              const SizedBox(height: 60),
+          // Extracting data from the stream
+          final prices = snapshot.data!;
+          
+          // Helper to find specific prices from the list
+          double getPrice(String cat) => 
+            (prices.firstWhere((e) => e['category'] == cat, orElse: () => {'price_per_gram': 0.0})['price_per_gram'] as num).toDouble();
 
-              // PRICE TABLE
-              Container(
-                constraints: const BoxConstraints(maxWidth: 600),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(15),
-                  boxShadow: [
-                    BoxShadow(color: Colors.black.withOpacity(0.4), blurRadius: 20, offset: const Offset(0, 10))
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(15),
-                  child: Table(
-                    // Added fixed column widths to prevent table layout crashes
-                    columnWidths: const {
-                      0: FlexColumnWidth(2),
-                      1: FlexColumnWidth(1),
-                    },
-                    children: [
-                      _tableHeader("GOLD TYPE", "PRICE (PER GRAM)"),
-                      _tableRow("Gold 999 (24k)", "RM${gold999Price.toStringAsFixed(2)}"),
-                      _tableRow("Gold 916 (22k)", "RM${gold916Price.toStringAsFixed(2)}", isHighlighted: true),
-                      _tableRow("Gold 750 (18k)", "RM${gold750Price.toStringAsFixed(2)}"),
-                    ],
+          // Get the latest 'last_updated' timestamp from the rows
+          String rawTime = prices.firstWhere((e) => e['category'] == '916 GOLD')['last_updated'];
+          String formattedTime = DateFormat('MMMM dd, yyyy h:mm a').format(DateTime.parse(rawTime).toLocal());
+
+          double gold916 = getPrice('916 GOLD');
+          double gold999 = getPrice('999 GOLD');
+          double gold750 = getPrice('750 GOLD');
+
+          return SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 60, horizontal: 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  RichText(
+                    textAlign: TextAlign.center,
+                    text: const TextSpan(
+                      style: TextStyle(fontSize: 22, color: Colors.white, fontFamily: 'Serif'),
+                      children: [
+                        TextSpan(text: "LIVE "),
+                        TextSpan(text: "GOLD", style: TextStyle(color: Color(0xFFD4AF37), fontWeight: FontWeight.bold)),
+                        TextSpan(text: " PRICE (per gram):"),
+                      ],
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 20),
+                  Text(
+                    "RM${gold916.toStringAsFixed(2)}",
+                    style: const TextStyle(
+                      color: Color(0xFFD4AF37),
+                      fontSize: 80,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: -2,
+                    ),
+                  ),
+                  Text(
+                    "Last Updated: $formattedTime",
+                    style: const TextStyle(color: Colors.white54, fontSize: 12),
+                  ),
+                  const SizedBox(height: 60),
+                  Container(
+                    constraints: const BoxConstraints(maxWidth: 600),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(15),
+                      boxShadow: [
+                        BoxShadow(color: Colors.black.withOpacity(0.4), blurRadius: 20, offset: const Offset(0, 10))
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(15),
+                      child: Table(
+                        columnWidths: const {
+                          0: FlexColumnWidth(2),
+                          1: FlexColumnWidth(1),
+                        },
+                        children: [
+                          _tableHeader("GOLD TYPE", "PRICE (PER GRAM)"),
+                          _tableRow("Gold 999 (24k)", "RM${gold999.toStringAsFixed(2)}"),
+                          _tableRow("Gold 916 (22k)", "RM${gold916.toStringAsFixed(2)}", isHighlighted: true),
+                          _tableRow("Gold 750 (18k)", "RM${gold750.toStringAsFixed(2)}"),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 40),
+                  // This button now updates the REAL database
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFD4AF37)),
+                    onPressed: () async {
+                      await supabase.from('market_prices').update({
+                        'price_per_gram': 395.50,
+                        'last_updated': DateTime.now().toIso8601String(),
+                      }).eq('category', '916 GOLD');
+                    },
+                    child: const Text("Update 916 Gold (Live Update)", style: TextStyle(color: Colors.black)),
+                  ),
+                ],
               ),
-              
-              const SizedBox(height: 40),
-              
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFD4AF37)),
-                onPressed: () => updateGoldPrice(395.50), 
-                child: const Text("Simulate Price Update", style: TextStyle(color: Colors.black)),
-              ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }
 
+  // Your existing TableRow helper methods (_tableHeader and _tableRow) stay exactly the same...
   TableRow _tableHeader(String c1, String c2) {
     return TableRow(
       decoration: const BoxDecoration(color: Color(0xFFFAF9F6)),
@@ -1222,7 +1501,7 @@ class _ContactPageState extends State<ContactPage> {
     );
   }
 
-  Widget _buildMapCard(String title, String address, String mapId, String googleMapsUrl) {
+  Widget _buildMapCard(String title, String address, String mapId, String googleMapsUrl) {  
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xFF2D0A0A), 
@@ -1295,19 +1574,24 @@ class _ContactPageState extends State<ContactPage> {
 class LinktreePage extends StatelessWidget {
   const LinktreePage({super.key});
 
+  // 2. Helper function to launch URLs
+  Future<void> _launchURL(String urlString) async {
+    final Uri url = Uri.parse(urlString);
+    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+      throw Exception('Could not launch $urlString');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Using Material ensures text styles and ink ripples work 
-    // without needing a full Scaffold if nested.
     return Material(
       color: const Color(0xFF1A0000), 
-      child: SafeArea( // Ensures content doesn't hit notches/status bars
+      child: SafeArea(
         child: Center(
           child: SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
             padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
             child: Container(
-              // This ensures the column doesn't stay invisible/zero-size
               constraints: const BoxConstraints(maxWidth: 400),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -1325,12 +1609,56 @@ class LinktreePage extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 40),
-                  _linkButton("Emas Juvita | Whatsapp 1", FontAwesomeIcons.whatsapp, const Color(0xFF25D366)),
-                  _linkButton("Emas Juvita | Whatsapp 2", FontAwesomeIcons.whatsapp, const Color(0xFF25D366)),
-                  _linkButton("Instagram: @emasjuvita", FontAwesomeIcons.instagram, const Color(0xFFE4405F)),
-                  _linkButton("Facebook: Kedai Emas Juvita", FontAwesomeIcons.facebook, const Color(0xFF1877F2)),
-                  _linkButton("Telegram Official", FontAwesomeIcons.telegram, const Color(0xFF26A5E4)),
-                  _linkButton("TikTok: @emasjuvita", FontAwesomeIcons.tiktok, Colors.white),
+                  
+                  // 3. Add your actual links here
+                  _linkButton(
+                    "Emas Juvita | Whatsapp 1", 
+                    FontAwesomeIcons.whatsapp, 
+                    const Color(0xFF25D366),
+                    "https://wassap.my/60195666650/emasjuvita" // Replace with real number
+                  ),
+                  _linkButton(
+                    "Emas Juvita | Whatsapp 2", 
+                    FontAwesomeIcons.whatsapp, 
+                    const Color(0xFF25D366),
+                    "https://wassap.my/60109346650/emasjuvita" // Replace with real number
+                  ),
+                  _linkButton(
+                    "Instagram: @emasjuvita", 
+                    FontAwesomeIcons.instagram, 
+                    const Color(0xFFE4405F),
+                    "https://www.instagram.com/emasjuvita/?hl=en"
+                  ),
+                  _linkButton(
+                    "Instagram: @emasjuvita.prt.raja", 
+                    FontAwesomeIcons.instagram, 
+                    const Color(0xFFE4405F),
+                    "https://www.instagram.com/emasjuvita.prt.raja/?hl=en"
+                  ),
+                  _linkButton(
+                    "Instagram: @emas.juvita", 
+                    FontAwesomeIcons.instagram, 
+                    const Color(0xFFE4405F),
+                    "https://www.instagram.com/emas.juvita/?hl=en"
+                  ),
+                  _linkButton(
+                    "Facebook: Kedai Emas Juvita", 
+                    FontAwesomeIcons.facebook, 
+                    const Color(0xFF1877F2),
+                    "https://www.facebook.com/KedaiEmasJuvita"
+                  ),
+                  _linkButton(
+                    "Telegram Official", 
+                    FontAwesomeIcons.telegram, 
+                    const Color(0xFF26A5E4),
+                    "https://t.me/emasjuvita"
+                  ),
+                  _linkButton(
+                    "TikTok: @emasjuvita", 
+                    FontAwesomeIcons.tiktok, 
+                    Colors.white,
+                    "https://www.tiktok.com/@emasjuvita"
+                  ),
                 ],
               ),
             ),
@@ -1340,16 +1668,17 @@ class LinktreePage extends StatelessWidget {
     );
   }
 
-  Widget _linkButton(String title, dynamic icon, Color iconColor) {
+  // 4. Updated button to accept and use the URL
+  Widget _linkButton(String title, dynamic icon, Color iconColor, String url) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 15),
       child: OutlinedButton(
         style: OutlinedButton.styleFrom(
-          minimumSize: const Size(double.infinity, 60), // Better than wrapping in SizedBox
+          minimumSize: const Size(double.infinity, 60),
           side: const BorderSide(color: Color(0xFFD4AF37), width: 1.5),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
-        onPressed: () {},
+        onPressed: () => _launchURL(url), // 5. Call the launch function
         child: Row(
           children: [
             const SizedBox(width: 5),
